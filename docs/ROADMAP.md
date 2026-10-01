@@ -15,10 +15,11 @@ in the same commit.
 Known temporary things to remove or replace:
 
 - On-screen `up/left/down/right` "dev controls" in `App.tsx` and `.dev-controls` in `App.css`
-- `Moves` score box is fine to keep. A `Best` box is missing.
 - Header text, `<title>`, and favicon are placeholders
-- Overlay appears instantly and covers the final animation
 - Keyboard focus stays on the header button when the overlay appears
+
+Fixed since this list was written: `Best` score box (5.1), and the overlay no longer appears
+instantly (4.5). The overlay is still not a dialog and does not take focus, which is Phase 6.
 
 ---
 
@@ -58,23 +59,41 @@ Known temporary things to remove or replace:
 
 ### 5.1 Persistence and best score (do this BEFORE undo and theme, both depend on it)
 
-- [ ] Create `src/state/persistence.ts`: a versioned envelope `{ version, data }` in `localStorage`.
+- [x] Create `src/state/persistence.ts`: a versioned envelope `{ version, data }` in `localStorage`.
       Hand-written runtime validation (or a small schema lib if justified) for everything read back:
       board is square with valid tile values (0 or powers of 2 >= 2), `rngState` and `seed` are
       finite ints, `status` is valid, and so on. Corrupt, missing, or newer-version data falls back to a fresh
       game and never throws. Provide a migration function even if there is only v1.
-- [ ] All storage access wrapped in try/catch (private mode, quota, disabled storage). The game must
+- [x] All storage access wrapped in try/catch (private mode, quota, disabled storage). The game must
       run with storage unavailable.
-- [ ] Persist: current game and its tracker-independent state, best score, settings (theme, etc.).
+- [x] Persist: current game and its tracker-independent state, best score, settings (theme, etc.).
       On load, rebuild the tracker from the board with `birth: 'initial'` (no animation).
-- [ ] Debounce or batch writes. Write on accepted moves and on `visibilitychange` and `pagehide`
+- [x] Debounce or batch writes. Write on accepted moves and on `visibilitychange` and `pagehide`
       (not every render). Make sure a hard kill loses at most the last move.
-- [ ] **Best score:** never decreases. Updated when score exceeds it, including after a win and continue.
+- [x] **Best score:** never decreases. Updated when score exceeds it, including after a win and continue.
       Show a `Best` ScoreBox. Best is **per board size** (prepare for Phase 10 variable sizes).
-- [ ] Multi-tab: listen to the `storage` event so best score stays consistent. Decide, document,
+- [x] Multi-tab: listen to the `storage` event so best score stays consistent. Decide, document,
       and test what happens if two tabs play (recommended: last-writer-wins for the game, max for best).
-- [ ] Tests: round-trip, corrupt JSON, wrong version, tampered board, storage throwing, restore continues
+- [x] Tests: round-trip, corrupt JSON, wrong version, tampered board, storage throwing, restore continues
       identically to the original game (determinism through `rngState`).
+
+Decisions and things later phases must not undo:
+
+- Validation lives in `src/state/savedData.ts` (pure, over `unknown`); storage I/O lives in
+  `src/state/persistence.ts`. Split so validation is testable without a DOM.
+- **Game and best share one key.** One write is atomic and cannot half-apply. The cost is that
+  rejecting a corrupt game also loses the best score. Deliberate: a save that half-applies and
+  shows a wrong board is worse than a lost high score.
+- `migrate()` has one branch today. Each new shape adds a branch rather than editing the
+  validator above it, so old saves keep working.
+- `store.adopt()` is the single path for replacing the game from outside (load, another tab). It
+  always rebuilds the tracker with `birth: 'initial'` and carries `nextId` forward, so a restored
+  board never animates in and never reuses a DOM node.
+- Writes are debounced 400ms and flushed on `visibilitychange`/`pagehide`. Nothing is written on
+  load, so a save we just rejected is not immediately rewritten with the fresh game.
+- Theme is persisted as `settings.theme` but fixed to `system` until 5.3.
+- 5.2 must not store history inside `GameState`; it goes beside the tracker in the store, and 5.2
+  adds it to the envelope, which means a schema version bump.
 
 ### 5.2 Undo (owner-requested)
 

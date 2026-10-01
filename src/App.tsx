@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import './App.css';
 import type { Direction } from './engine';
-import { useGameStore } from './state/gameStore';
+import { startPersistence, startStorageSync, useGameStore } from './state/gameStore';
+import { bestFor } from './state/savedData';
 import { drawOrder } from './state/tileTracker';
 import { Board } from './ui/Board';
 import { GameOverlay } from './ui/GameOverlay';
@@ -18,13 +19,20 @@ export default function App() {
   const game = useGameStore((state) => state.game);
   const tracker = useGameStore((state) => state.tracker);
   const lastTurn = useGameStore((state) => state.lastTurn);
+  const best = useGameStore((state) => state.best);
   const keepPlaying = useGameStore((state) => state.keepPlaying);
   const restart = useGameStore((state) => state.restart);
+
+  // Persisting on move, and staying in step with other tabs. Both are side effects rather
+  // than rendering, so they start once here and tear down with the component.
+  useEffect(() => startPersistence(), []);
+  useEffect(() => startStorageSync(), []);
 
   useKeyboard(gameInput.input);
   const swipe = useSwipe(gameInput.input);
 
   const tiles = useMemo(() => drawOrder(tracker), [tracker]);
+  const bestScore = bestFor(best, game.board.length);
 
   const handleRestart = useCallback(() => {
     gameInput.reset(); // drop any queued moves from the old game
@@ -41,6 +49,7 @@ export default function App() {
           <ScoreBox label="Score" value={game.score} live={game.moves > 0}>
             <ScorePopups moves={game.moves} gained={lastTurn?.gained ?? 0} />
           </ScoreBox>
+          <ScoreBox label="Best" value={bestScore} live={bestScore > 0} />
           <ScoreBox label="Moves" value={game.moves} live={game.moves > 0} />
         </div>
       </header>

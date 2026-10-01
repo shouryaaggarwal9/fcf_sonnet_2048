@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { applyMove, type Direction, type GameState, newGame } from '../engine';
-import { useGameStore } from './gameStore';
+import { mergeBest, useGameStore } from './gameStore';
+import { bestFor } from './savedData';
 import { matchesBoard } from './tileTracker';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'down', 'left', 'right'];
@@ -134,5 +135,80 @@ describe('game store', () => {
     useGameStore.setState({ game: cornerTile, lastTurn: null });
     expect(store().move('left')).toBe(false);
     expect(store().move('right')).toBe(true);
+  });
+});
+
+describe('best score', () => {
+  it('starts at nothing recorded', () => {
+    useGameStore.setState({ best: {} });
+    expect(bestFor(store().best, 4)).toBe(0);
+  });
+
+  it('records the score of a game and never lowers it', () => {
+    useGameStore.setState({ best: {}, game: newGame(1) });
+    for (let i = 0; i < 40 && store().game.status === 'playing'; i++)
+      store().move(legalMove(store().game));
+
+    const reached = store().game.score;
+    expect(bestFor(store().best, 4)).toBe(reached);
+
+    store().restart(2); // a new game starts at 0, the record must survive
+    expect(bestFor(store().best, 4)).toBe(reached);
+    expect(store().game.score).toBe(0);
+  });
+
+  it('is per board size, so a 3x3 record does not become a 4x4 record', () => {
+    useGameStore.setState({ best: { 3: 777 }, game: newGame(1) });
+    store().move(legalMove(store().game));
+    expect(bestFor(store().best, 3)).toBe(777);
+    expect(bestFor(store().best, 4)).toBe(0);
+  });
+
+  it('does not change when a move scores nothing new, so no needless re-render', () => {
+    useGameStore.setState({ best: { 4: 10_000 }, game: newGame(1) });
+    const before = store().best;
+    store().move(legalMove(store().game));
+    expect(store().best).toBe(before);
+  });
+});
+
+describe('mergeBest', () => {
+  it('takes the higher score for each size', () => {
+    expect(mergeBest({ 4: 100 }, { 4: 900, 3: 50 })).toEqual({ 4: 900, 3: 50 });
+    expect(mergeBest({ 4: 900 }, { 4: 100 })).toEqual({ 4: 900 });
+  });
+
+  it('returns the same object when nothing improves, so no re-render', () => {
+    const ours = { 4: 900 };
+    expect(mergeBest(ours, { 4: 100 })).toBe(ours);
+    expect(mergeBest(ours, {})).toBe(ours);
+  });
+
+  it('never lowers a record, whichever tab is ahead', () => {
+    expect(mergeBest({}, { 4: 500 })).toEqual({ 4: 500 });
+  });
+});
+
+describe('adopt', () => {
+  it('replaces game and tracker together, and rebuilds without animating', () => {
+    useGameStore.setState({ best: {} });
+    const restored = { ...newGame(9), score: 400, moves: 12 };
+    store().adopt({ game: restored, best: { 4: 400 }, settings: { theme: 'system' } });
+
+    expect(store().game).toEqual(restored);
+    expect(matchesBoard(store().tracker.tiles, restored.board)).toBe(true);
+    expect(store().tracker.tiles.every((t) => t.birth === 'initial')).toBe(true);
+    expect(store().lastTurn).toBeNull();
+    expect(bestFor(store().best, 4)).toBe(400);
+  });
+
+  it('keeps tile ids moving forward so no DOM node from the old game is reused', () => {
+    const highest = store().tracker.nextId;
+    store().adopt({
+      game: newGame(3),
+      best: {},
+      settings: { theme: 'system' },
+    });
+    expect(store().tracker.tiles.every((t) => t.id >= highest)).toBe(true);
   });
 });
