@@ -28,3 +28,25 @@ export function keyToDirection(event: KeyInfo): Direction | null {
   if (event.ctrlKey || event.metaKey || event.altKey) return null;
   return KEY_MAP.get(event.code) ?? null;
 }
+
+/** How far a finger must travel, in CSS pixels, before it counts as a swipe. */
+export const MIN_SWIPE_PX = 24;
+
+/**
+ * Turns a drag vector into a direction, or null if it is too short or exactly diagonal.
+ * The longer axis wins. Screen coordinates: +x is right, +y is down.
+ */
+export function swipeToDirection(
+  dx: number,
+  dy: number,
+  minDistance = MIN_SWIPE_PX,
+): Direction | null {
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  if (Math.max(absX, absY) < minDistance) return null;
+  if (absX === absY) return null;
+
+  if (absX > absY) return dx > 0 ? 'right' : 'left';
+  return dy > 0 ? 'down' : 'up';
+}

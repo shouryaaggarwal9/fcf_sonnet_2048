@@ -7,6 +7,7 @@ import { GameOverlay } from './ui/GameOverlay';
 import { ScoreBox } from './ui/ScoreBox';
 import { boardToTiles } from './ui/tiles';
 import { useKeyboard } from './ui/useKeyboard';
+import { useSwipe } from './ui/useSwipe';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
 
@@ -17,6 +18,8 @@ export default function App() {
   const restart = useGameStore((state) => state.restart);
 
   useKeyboard(move);
+
+  const swipe = useSwipe(move);
 
   const tiles = useMemo(() => boardToTiles(game.board), [game.board]);
 
@@ -39,14 +42,16 @@ export default function App() {
         </button>
       </div>
 
-      <Board size={game.board.length} tiles={tiles}>
-        <GameOverlay
-          status={game.status}
-          score={game.score}
-          onKeepPlaying={keepPlaying}
-          onRestart={() => restart()}
-        />
-      </Board>
+      <div className="swipe-area" {...swipe}>
+        <Board size={game.board.length} tiles={tiles}>
+          <GameOverlay
+            status={game.status}
+            score={game.score}
+            onKeepPlaying={keepPlaying}
+            onRestart={() => restart()}
+          />
+        </Board>
+      </div>
 
       <div className="dev-controls">
         {DIRECTIONS.map((direction) => (
