@@ -1,8 +1,8 @@
 import { createEmptyBoard, getMaxTile, hasAvailableMoves } from './board';
-import { move } from './move';
+import { moveDetailed } from './move';
 import { createRng } from './rng';
 import { spawnTile } from './spawn';
-import type { Board, Direction, GameState, GameStatus, Tile } from './types';
+import type { Board, Direction, GameState, GameStatus, Tile, TileMove } from './types';
 
 export const WIN_TILE = 2048;
 export const STARTING_TILES = 2;
@@ -15,6 +15,9 @@ export interface TurnResult {
   gained: number;
   /** The tile that spawned after the move, so the UI can animate it. */
   spawned: Tile | null;
+
+  /** How every tile travelled. Empty if the move was rejected. */
+  moves: readonly TileMove[];
 }
 
 function resolveStatus(board: Board, keepPlaying: boolean): GameStatus {
@@ -54,10 +57,11 @@ export function applyMove(state: GameState, direction: Direction): TurnResult {
     moved: false,
     gained: 0,
     spawned: null,
+    moves: [],
   };
   if (state.status !== 'playing') return rejected;
 
-  const slid = move(state.board, direction);
+  const slid = moveDetailed(state.board, direction);
   if (!slid.moved) return rejected;
 
   const rng = createRng(state.rngState);
@@ -75,6 +79,7 @@ export function applyMove(state: GameState, direction: Direction): TurnResult {
     moved: true,
     gained: slid.score,
     spawned: tile,
+    moves: slid.moves,
   };
 }
 

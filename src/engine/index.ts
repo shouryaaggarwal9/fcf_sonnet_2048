@@ -15,4 +15,5 @@ export type {
   Position,
   Row,
   Tile,
+  TileMove,
 } from './types';

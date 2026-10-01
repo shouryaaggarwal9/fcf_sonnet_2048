@@ -32,3 +32,13 @@ export interface GameState {
   /** Where the RNG is in its sequence. Lets a restored game continue identically. */
   readonly rngState: number;
 }
+
+/** One tile's journey during a move. A tile that doesn't move has from equal to to. */
+export interface TileMove {
+  from: Position;
+  to: Position;
+  /** The tile's value before the move. */
+  value: number;
+  /** True for both partners of a merge. The merged tile's value is value * 2. */
+  merged: boolean;
+}

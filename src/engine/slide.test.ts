@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { slideRow } from './slide';
+import { slideRow, slideRowDetailed } from './slide';
 
 type Case = [name: string, input: number[], row: number[], score: number, moved: boolean];
 
@@ -34,5 +34,42 @@ describe('slideRow', () => {
 
   it('returns a row of the same length as the input', () => {
     expect(slideRow([0, 2, 0, 0, 2, 0]).row).toHaveLength(6);
+  });
+});
+
+describe('slideRowDetailed', () => {
+  it.each(cases)('agrees with slideRow: %s', (_name, input) => {
+    const { moves, ...rest } = slideRowDetailed(input);
+    expect(rest).toEqual(slideRow(input));
+    expect(moves).toHaveLength(input.filter((value) => value !== 0).length);
+  });
+
+  it('traces a plain slide', () => {
+    expect(slideRowDetailed([0, 0, 0, 2]).moves).toEqual([
+      { from: 3, to: 0, value: 2, merged: false },
+    ]);
+  });
+
+  it('traces a tile that does not move', () => {
+    expect(slideRowDetailed([2, 0, 0, 0]).moves).toEqual([
+      { from: 0, to: 0, value: 2, merged: false },
+    ]);
+  });
+
+  it('traces a merge as two tiles sharing one destination', () => {
+    expect(slideRowDetailed([2, 2, 2, 0]).moves).toEqual([
+      { from: 0, to: 0, value: 2, merged: true },
+      { from: 1, to: 0, value: 2, merged: true },
+      { from: 2, to: 1, value: 2, merged: false },
+    ]);
+  });
+
+  it('traces two separate merges in [2,2,2,2]', () => {
+    expect(slideRowDetailed([2, 2, 2, 2]).moves).toEqual([
+      { from: 0, to: 0, value: 2, merged: true },
+      { from: 1, to: 0, value: 2, merged: true },
+      { from: 2, to: 1, value: 2, merged: true },
+      { from: 3, to: 1, value: 2, merged: true },
+    ]);
   });
 });

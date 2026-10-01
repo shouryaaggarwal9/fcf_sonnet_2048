@@ -184,6 +184,34 @@ describe('applyMove', () => {
     const won = applyMove(stateFrom(nearWin), 'left').state;
     expect(applyMove(won, 'right').state).toBe(won);
   });
+
+  it('reports how every tile travelled', () => {
+    const result = applyMove(stateFrom(nearWin), 'left');
+    expect(result.moves).toEqual([
+      {
+        from: { row: 0, col: 0 },
+        to: { row: 0, col: 0 },
+        value: 1024,
+        merged: true,
+      },
+      {
+        from: { row: 0, col: 1 },
+        to: { row: 0, col: 0 },
+        value: 1024,
+        merged: true,
+      },
+    ]);
+  });
+
+  it('reports no tile movement for a rejected move', () => {
+    const stuck = stateFrom([
+      [2, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    expect(applyMove(stuck, 'left').moves).toEqual([]);
+  });
 });
 
 describe('continueGame', () => {
