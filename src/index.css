@@ -1,138 +1,40 @@
-.board {
-  /* The board is sized once here, and everything inside derives from it. */
-  --board-width: min(92vw, 70dvh, 480px);
-  --gap: calc(var(--board-width) * 0.12 / var(--size));
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
 
-  width: var(--board-width);
-  padding: var(--gap);
-  background: var(--board-bg);
-  border-radius: calc(var(--gap) * 1.5);
+  --page-bg: #faf8ef;
+  --text: #776e65;
+  --board-bg: #bbada0;
+  --cell-bg: rgb(238 228 218 / 0.35);
 }
 
-.board-inner {
-  position: relative;
-  aspect-ratio: 1;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: #1b1a17;
+    --text: #d8cfc4;
+    --board-bg: #3a3530;
+    --cell-bg: rgb(255 255 255 / 0.06);
+  }
 }
 
-.board-grid,
-.board-tiles {
-  position: absolute;
-  inset: 0;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-.board-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--size), 1fr);
-  grid-template-rows: repeat(var(--size), 1fr);
-  gap: var(--gap);
-}
-
-.board-cell {
-  background: var(--cell-bg);
-  border-radius: var(--gap);
-}
-
-/*
- * A tile is exactly one cell wide. Percentages in translate() refer to the tile's own
- * size, so "col * (100% + gap)" lands it on the right cell at any board size.
- */
-.tile {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: calc((100% - (var(--size) - 1) * var(--gap)) / var(--size));
-  aspect-ratio: 1;
-  transform: translate(
-    calc(var(--col) * (100% + var(--gap))),
-    calc(var(--row) * (100% + var(--gap)))
-  );
+body {
+  margin: 0;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  container-type: size; /* lets the number scale with the tile via cqw units */
-  border-radius: var(--gap);
-  background: var(--tile-bg);
-  color: var(--tile-fg);
-  font-weight: 700;
-  user-select: none;
+  background: var(--page-bg);
+  color: var(--text);
 }
 
-.tile-value {
-  font-size: 50cqw;
-  line-height: 1;
-}
-
-.tile[data-digits="3"] .tile-value {
-  font-size: 40cqw;
-}
-.tile[data-digits="4"] .tile-value {
-  font-size: 31cqw;
-}
-.tile[data-digits="5"] .tile-value {
-  font-size: 25cqw;
-}
-.tile[data-digits="6"] .tile-value,
-.tile[data-digits="7"] .tile-value {
-  font-size: 20cqw;
-}
-
-/* Palette: one tier per power of two, 2 to 2048. Tier 12 covers everything bigger. */
-.tile[data-tier="1"] {
-  --tile-bg: #eee4da;
-  --tile-fg: #776e65;
-}
-.tile[data-tier="2"] {
-  --tile-bg: #ede0c8;
-  --tile-fg: #776e65;
-}
-.tile[data-tier="3"] {
-  --tile-bg: #f2b179;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="4"] {
-  --tile-bg: #f59563;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="5"] {
-  --tile-bg: #f67c5f;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="6"] {
-  --tile-bg: #f65e3b;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="7"] {
-  --tile-bg: #edcf72;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="8"] {
-  --tile-bg: #edcc61;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="9"] {
-  --tile-bg: #edc850;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="10"] {
-  --tile-bg: #edc53f;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="11"] {
-  --tile-bg: #edc22e;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="12"] {
-  --tile-bg: #3c3a32;
-  --tile-fg: #f9f6f2;
-}
-
-/* The two lightest tiles would glare on a dark board, so they get darker variants. */
-@media (prefers-color-scheme: dark) {
-  .tile[data-tier="1"] {
-    --tile-bg: #4a443c;
-    --tile-fg: #f0e8dc;
-  }
-  .tile[data-tier="2"] {
-    --tile-bg: #5a5145;
-    --tile-fg: #f0e8dc;
-  }
+main {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding: 1rem;
 }
