@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
 import type { Direction } from './engine';
 import { useGameStore } from './state/gameStore';
+import { Board } from './ui/Board';
+import { boardToTiles } from './ui/tiles';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
 
@@ -9,9 +12,7 @@ export default function App() {
   const keepPlaying = useGameStore((state) => state.keepPlaying);
   const restart = useGameStore((state) => state.restart);
 
-  const text = game.board
-    .map((row) => row.map((value) => String(value || '.').padStart(6)).join(''))
-    .join('\n');
+  const tiles = useMemo(() => boardToTiles(game.board), [game.board]);
 
   return (
     <main>
@@ -19,7 +20,7 @@ export default function App() {
       <p>
         Score {game.score} · Moves {game.moves} · {game.status}
       </p>
-      <pre>{text}</pre>
+      <Board size={game.board.length} tiles={tiles} />
       <div>
         {DIRECTIONS.map((direction) => (
           <button key={direction} type="button" onClick={() => move(direction)}>
