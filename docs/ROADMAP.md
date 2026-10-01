@@ -49,7 +49,7 @@ Known temporary things to remove or replace:
       mash keys (queue of 2, lock honoured); new game mid-animation; tab hidden and restored mid-animation;
       window resize mid-slide; `[2,2,2,2]` gives two simultaneous pops; merge plus spawn at the same instant;
       page load shows no animation.
-- [ ] Touch polish: `overscroll-behavior: none` on the page, no long-press context menu or text selection
+- [x] Touch polish: `overscroll-behavior: none` on the page, no long-press context menu or text selection
       on the board, no double-tap zoom (`touch-action: manipulation` outside the swipe area).
 
 ---

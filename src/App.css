@@ -46,4 +46,6 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  /* No long-press callout menu on the board (iOS Safari). */
+  -webkit-touch-callout: none;
 }

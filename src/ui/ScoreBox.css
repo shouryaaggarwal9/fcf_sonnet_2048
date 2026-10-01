@@ -40,6 +40,11 @@
   animation: score-bump var(--pop-ms) var(--slide-ease);
 }
 
+/* Before the first move: no animation at all, so page load (and restart) is still. */
+.score-value-static {
+  animation: none;
+}
+
 /*
  * The floating "+N". It is only a view, so it is hidden from assistive tech and never
  * takes pointer events. It starts when the slide ends, like the merge and spawn effects,
@@ -79,6 +84,10 @@
 @media (prefers-reduced-motion: reduce) {
   .score-value {
     animation: score-fade var(--fade-ms) linear;
+  }
+
+  .score-value-static {
+    animation: none;
   }
 
   .score-popup {

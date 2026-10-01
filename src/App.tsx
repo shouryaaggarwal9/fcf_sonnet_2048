@@ -38,10 +38,10 @@ export default function App() {
       <header className="app-header">
         <h1 className="app-title">2048</h1>
         <div className="scores">
-          <ScoreBox label="Score" value={game.score}>
+          <ScoreBox label="Score" value={game.score} live={game.moves > 0}>
             <ScorePopups moves={game.moves} gained={lastTurn?.gained ?? 0} />
           </ScoreBox>
-          <ScoreBox label="Moves" value={game.moves} />
+          <ScoreBox label="Moves" value={game.moves} live={game.moves > 0} />
         </div>
       </header>
 
