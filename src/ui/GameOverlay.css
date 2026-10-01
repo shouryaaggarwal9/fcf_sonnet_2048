@@ -1,6 +1,8 @@
 .overlay {
   position: absolute;
   inset: 0;
+  /* Above the tile layer, whose z-index: 1 is scoped to .board-tiles. */
+  z-index: 2;
   display: grid;
   align-content: center;
   justify-items: center;
