@@ -26,18 +26,18 @@ Known temporary things to remove or replace:
 
 ### 4.5 Overlay timing, score gain popup, reduced-motion audit
 
-- [ ] **Delayed overlay.** The win and game-over overlay fades in only after the last move's animations
+- [x] **Delayed overlay.** The win and game-over overlay fades in only after the last move's animations
       finish (delay of `SLIDE_MS + max(SPAWN_MS, POP_MS)`, derived from `motion.ts`, not a new magic number).
       Players must see the final board first. `backwards` fill so it's invisible while waiting. It must
       not be clickable or focusable before it's visible. Reduced motion: a short fade with no long delay.
-- [ ] **Floating "+N".** On each accepted move with `gained > 0`, a "+N" rises and fades from the Score box.
+- [x] **Floating "+N".** On each accepted move with `gained > 0`, a "+N" rises and fades from the Score box.
       Key it by `game.moves` so each instance is independent. Starts when the slide ends, like merge
       effects. Clean up on `animationend`. `pointer-events: none` and `aria-hidden`. Overlapping
       instances from queued moves must not break. Reduced motion: fade only, no travel.
       Optionally give the Score box a tiny bump on change.
-- [ ] **Reduced-motion audit.** Walk every animation and transition. Each has a reduced variant that removes
+- [x] **Reduced-motion audit.** Walk every animation and transition. Each has a reduced variant that removes
       movement and scaling. No parallax or large motion is left. Check with DevTools emulation.
-- [ ] Unit-test any new pure logic (for example the delay calculation).
+- [x] Unit-test any new pure logic (for example the delay calculation).
 
 ### 4.6 Tuning and edge cases
 

@@ -7,6 +7,13 @@
   gap: 0.75rem;
   border-radius: inherit;
   backdrop-filter: blur(2px);
+
+  /*
+   * Wait for the board to finish moving before covering it. --settle-ms comes from
+   * motion.ts, and "backwards" applies the 0% frame (invisible) during the delay.
+   * There is no timer: the stylesheet owns the timing.
+   */
+  animation: overlay-in var(--overlay-fade-ms) var(--slide-ease) var(--settle-ms) backwards;
 }
 
 .overlay[data-kind="over"] {
@@ -15,6 +22,27 @@
 
 .overlay[data-kind="won"] {
   background: var(--overlay-won);
+}
+
+/*
+ * Until the fade begins, the overlay must not be clickable or focusable, otherwise a key
+ * press or a stray tap lands on a screen the player has not seen yet. `inert` in the markup
+ * covers focus and clicks; these two are the fallback for engines that ignore it.
+ */
+.overlay[data-settled="false"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .overlay-title {
@@ -31,4 +59,23 @@
 .overlay-actions {
   display: flex;
   gap: 0.6rem;
+}
+
+/*
+ * Reduced motion: no scale, and no wait, since there is no slide to watch. A short fade
+ * still means the board is not covered instantly.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: overlay-fade var(--fade-ms) linear var(--settle-ms-reduced) backwards;
+  }
+}
+
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

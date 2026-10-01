@@ -230,10 +230,10 @@
   .tile[data-birth="spawn"] .tile-inner,
   .tile[data-birth="fresh"] .tile-inner,
   .tile[data-birth="merge"] .tile-inner {
-    animation: tile-fade 120ms linear backwards;
+    animation: tile-fade var(--fade-ms) linear backwards;
   }
 
   .tile[data-ghost="true"] {
-    animation: tile-ghost-out 120ms linear forwards;
+    animation: tile-ghost-out var(--fade-ms) linear forwards;
   }
 }

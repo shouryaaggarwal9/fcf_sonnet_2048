@@ -1,4 +1,5 @@
 .score-box {
+  position: relative; /* anchors the floating "+N" */
   display: grid;
   justify-items: center;
   min-width: 4.5rem;
@@ -20,4 +21,89 @@
   font-size: 1.4rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* A small kick when the number changes. Keyed on the value, so it plays once per change. */
+@keyframes score-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.score-value {
+  animation: score-bump var(--pop-ms) var(--slide-ease);
+}
+
+/*
+ * The floating "+N". It is only a view, so it is hidden from assistive tech and never
+ * takes pointer events. It starts when the slide ends, like the merge and spawn effects,
+ * and rises out of the box. The box itself does not clip it.
+ */
+.score-popup {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 0.15rem;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: score-gain var(--gain-ms) var(--slide-ease) var(--slide-ms) backwards;
+}
+
+@keyframes score-gain {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0.35rem) scale(0.9);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -0.1rem) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -1.6rem) scale(1);
+  }
+}
+
+/* Reduced motion: the number still acknowledges a change, but nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .score-value {
+    animation: score-fade var(--fade-ms) linear;
+  }
+
+  .score-popup {
+    animation: score-popup-fade var(--fade-ms) linear backwards;
+  }
+}
+
+@keyframes score-fade {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fades in and out in place, so it still reads as a transient marker with no movement. */
+@keyframes score-popup-fade {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }

@@ -6,7 +6,9 @@ import { drawOrder } from './state/tileTracker';
 import { Board } from './ui/Board';
 import { GameOverlay } from './ui/GameOverlay';
 import { gameInput } from './ui/gameInput';
+import { motionVars } from './ui/motion';
 import { ScoreBox } from './ui/ScoreBox';
+import { ScorePopups } from './ui/ScorePopups';
 import { useKeyboard } from './ui/useKeyboard';
 import { useSwipe } from './ui/useSwipe';
 
@@ -15,6 +17,7 @@ const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
 export default function App() {
   const game = useGameStore((state) => state.game);
   const tracker = useGameStore((state) => state.tracker);
+  const lastTurn = useGameStore((state) => state.lastTurn);
   const keepPlaying = useGameStore((state) => state.keepPlaying);
   const restart = useGameStore((state) => state.restart);
 
@@ -29,11 +32,15 @@ export default function App() {
   }, [restart]);
 
   return (
-    <main className="app">
+    // motionVars is set here as well as on the board, so the Score box animations get the
+    // same timing constants. The board keeps its own copy to stay self-contained.
+    <main className="app" style={motionVars}>
       <header className="app-header">
         <h1 className="app-title">2048</h1>
         <div className="scores">
-          <ScoreBox label="Score" value={game.score} />
+          <ScoreBox label="Score" value={game.score}>
+            <ScorePopups moves={game.moves} gained={lastTurn?.gained ?? 0} />
+          </ScoreBox>
           <ScoreBox label="Moves" value={game.moves} />
         </div>
       </header>
