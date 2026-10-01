@@ -15,3 +15,20 @@ export interface Position {
 export interface Tile extends Position {
   value: number;
 }
+
+export type GameStatus = 'playing' | 'won' | 'over';
+
+/** Everything needed to save, restore, or replay a game. Plain data, safe for JSON. */
+export interface GameState {
+  readonly board: Board;
+  readonly score: number;
+  /** Number of legal moves made. Rejected moves are not counted. */
+  readonly moves: number;
+  readonly status: GameStatus;
+  /** True once the player chose to continue past 2048. */
+  readonly keepPlaying: boolean;
+  /** The seed the game started from. Kept for replays and sharing. */
+  readonly seed: number;
+  /** Where the RNG is in its sequence. Lets a restored game continue identically. */
+  readonly rngState: number;
+}

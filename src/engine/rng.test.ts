@@ -37,4 +37,14 @@ describe('createRng', () => {
     a();
     expect(b()).toBe(take(1, 5)[0]);
   });
+
+  it('resumes exactly from a saved state', () => {
+    const original = createRng(77);
+    for (let i = 0; i < 5; i++) original();
+
+    const resumed = createRng(original.getState());
+    const fromResumed = Array.from({ length: 10 }, () => resumed());
+    const fromOriginal = Array.from({ length: 10 }, () => original());
+    expect(fromResumed).toEqual(fromOriginal);
+  });
 });

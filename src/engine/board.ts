@@ -33,3 +33,20 @@ export function getEmptyCells(board: Board): Position[] {
   }
   return cells;
 }
+
+/** True if any cell is empty or any two neighbors (horizontal or vertical) are equal. */
+export function hasAvailableMoves(board: Board): boolean {
+  for (const [r, row] of board.entries()) {
+    for (const [c, value] of row.entries()) {
+      if (value === 0) return true;
+      if (row[c + 1] === value) return true;
+      if (board[r + 1]?.[c] === value) return true;
+    }
+  }
+  return false;
+}
+
+/** The largest tile on the board, or 0 if it is empty. */
+export function getMaxTile(board: Board): number {
+  return Math.max(0, ...board.flat());
+}

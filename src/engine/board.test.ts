@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { cloneBoard, createEmptyBoard, getEmptyCells, reverseRows, transpose } from './board';
+import {
+  cloneBoard,
+  createEmptyBoard,
+  getEmptyCells,
+  getMaxTile,
+  hasAvailableMoves,
+  reverseRows,
+  transpose,
+} from './board';
 import type { Board } from './types';
 
 const grid: Board = [
@@ -104,5 +112,64 @@ describe('getEmptyCells', () => {
 
   it('returns an empty list for a full board', () => {
     expect(getEmptyCells(grid)).toEqual([]);
+  });
+});
+
+describe('hasAvailableMoves', () => {
+  it('is true when any cell is empty', () => {
+    expect(
+      hasAvailableMoves([
+        [2, 4],
+        [4, 0],
+      ]),
+    ).toBe(true);
+  });
+
+  it('is true on a full board with a horizontal pair', () => {
+    expect(
+      hasAvailableMoves([
+        [2, 2],
+        [4, 8],
+      ]),
+    ).toBe(true);
+  });
+
+  it('is true on a full board with a vertical pair', () => {
+    expect(
+      hasAvailableMoves([
+        [2, 4],
+        [2, 8],
+      ]),
+    ).toBe(true);
+  });
+
+  it('is false on a full board with no equal neighbors', () => {
+    expect(
+      hasAvailableMoves([
+        [2, 4, 2],
+        [4, 2, 4],
+        [2, 4, 2],
+      ]),
+    ).toBe(false);
+  });
+
+  it('does not treat the end of one row and the start of the next as neighbors', () => {
+    // Row 0 ends in 4 and row 1 starts with 4, but they are not adjacent.
+    expect(
+      hasAvailableMoves([
+        [2, 4],
+        [4, 2],
+      ]),
+    ).toBe(false);
+  });
+});
+
+describe('getMaxTile', () => {
+  it('returns the largest value', () => {
+    expect(getMaxTile(grid)).toBe(9);
+  });
+
+  it('returns 0 for an empty board', () => {
+    expect(getMaxTile(createEmptyBoard(4))).toBe(0);
   });
 });
