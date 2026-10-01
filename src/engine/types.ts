@@ -5,3 +5,13 @@ export type Row = readonly number[];
 
 /** A square grid stored as rows. Tile values are 2, 4, 8, ... and 0 means empty. */
 export type Board = readonly Row[];
+
+export interface Position {
+  row: number;
+  col: number;
+}
+
+/** A tile with its position. Used for newly spawned tiles so the UI can animate them. */
+export interface Tile extends Position {
+  value: number;
+}

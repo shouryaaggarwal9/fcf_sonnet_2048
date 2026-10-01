@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cloneBoard, createEmptyBoard, reverseRows, transpose } from './board';
+import { cloneBoard, createEmptyBoard, getEmptyCells, reverseRows, transpose } from './board';
 import type { Board } from './types';
 
 const grid: Board = [
@@ -80,5 +80,29 @@ describe('reverseRows', () => {
     const before = structuredClone(grid);
     reverseRows(grid);
     expect(grid).toEqual(before);
+  });
+});
+
+describe('getEmptyCells', () => {
+  it('lists empty cells in row-major order', () => {
+    const board: Board = [
+      [2, 0, 4],
+      [0, 8, 0],
+      [16, 32, 0],
+    ];
+    expect(getEmptyCells(board)).toEqual([
+      { row: 0, col: 1 },
+      { row: 1, col: 0 },
+      { row: 1, col: 2 },
+      { row: 2, col: 2 },
+    ]);
+  });
+
+  it('returns every cell for an empty board', () => {
+    expect(getEmptyCells(createEmptyBoard(3))).toHaveLength(9);
+  });
+
+  it('returns an empty list for a full board', () => {
+    expect(getEmptyCells(grid)).toEqual([]);
   });
 });
