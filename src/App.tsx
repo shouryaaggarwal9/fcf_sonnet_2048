@@ -1,8 +1,42 @@
+import type { Direction } from './engine';
+import { useGameStore } from './state/gameStore';
+
+const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
+
 export default function App() {
+  const game = useGameStore((state) => state.game);
+  const move = useGameStore((state) => state.move);
+  const keepPlaying = useGameStore((state) => state.keepPlaying);
+  const restart = useGameStore((state) => state.restart);
+
+  const text = game.board
+    .map((row) => row.map((value) => String(value || '.').padStart(6)).join(''))
+    .join('\n');
+
   return (
     <main>
       <h1>2048</h1>
-      <p>fcf_sonnet is under construction.</p>
+      <p>
+        Score {game.score} · Moves {game.moves} · {game.status}
+      </p>
+      <pre>{text}</pre>
+      <div>
+        {DIRECTIONS.map((direction) => (
+          <button key={direction} type="button" onClick={() => move(direction)}>
+            {direction}
+          </button>
+        ))}
+      </div>
+      <div>
+        {game.status === 'won' && (
+          <button type="button" onClick={keepPlaying}>
+            keep playing
+          </button>
+        )}
+        <button type="button" onClick={() => restart()}>
+          new game
+        </button>
+      </div>
     </main>
   );
 }
