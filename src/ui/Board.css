@@ -217,7 +217,7 @@
 }
 
 /* Merge partners: they slide into the merge cell, then disappear the instant they land. */
-.tile[data-ghost="true"] .tile-inner {
+.tile[data-ghost="true"] {
   animation: tile-ghost-out 1ms linear var(--slide-ms) forwards;
 }
 
@@ -233,7 +233,7 @@
     animation: tile-fade 120ms linear backwards;
   }
 
-  .tile[data-ghost="true"] .tile-inner {
+  .tile[data-ghost="true"] {
     animation: tile-ghost-out 120ms linear forwards;
   }
 }

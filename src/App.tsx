@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import './App.css';
 import type { Direction } from './engine';
 import { useGameStore } from './state/gameStore';
 import { drawOrder } from './state/tileTracker';
 import { Board } from './ui/Board';
 import { GameOverlay } from './ui/GameOverlay';
+import { gameInput } from './ui/gameInput';
 import { ScoreBox } from './ui/ScoreBox';
 import { useKeyboard } from './ui/useKeyboard';
 import { useSwipe } from './ui/useSwipe';
@@ -13,18 +14,19 @@ const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
 
 export default function App() {
   const game = useGameStore((state) => state.game);
-  const move = useGameStore((state) => state.move);
+  const tracker = useGameStore((state) => state.tracker);
   const keepPlaying = useGameStore((state) => state.keepPlaying);
   const restart = useGameStore((state) => state.restart);
 
-  useKeyboard(move);
+  useKeyboard(gameInput.input);
+  const swipe = useSwipe(gameInput.input);
 
-  const swipe = useSwipe(move);
-
-  const tracker = useGameStore((state) => state.tracker);
   const tiles = useMemo(() => drawOrder(tracker), [tracker]);
 
-  // const tiles = useGameStore((state) => state.tracker.tiles);
+  const handleRestart = useCallback(() => {
+    gameInput.reset(); // drop any queued moves from the old game
+    restart();
+  }, [restart]);
 
   return (
     <main className="app">
@@ -40,7 +42,7 @@ export default function App() {
         <p className="tagline">
           Join the tiles, reach <strong>2048</strong>.
         </p>
-        <button type="button" className="btn" onClick={() => restart()}>
+        <button type="button" className="btn" onClick={handleRestart}>
           New game
         </button>
       </div>
@@ -51,14 +53,19 @@ export default function App() {
             status={game.status}
             score={game.score}
             onKeepPlaying={keepPlaying}
-            onRestart={() => restart()}
+            onRestart={handleRestart}
           />
         </Board>
       </div>
 
       <div className="dev-controls">
         {DIRECTIONS.map((direction) => (
-          <button key={direction} type="button" className="btn" onClick={() => move(direction)}>
+          <button
+            key={direction}
+            type="button"
+            className="btn"
+            onClick={() => gameInput.input(direction)}
+          >
             {direction}
           </button>
         ))}

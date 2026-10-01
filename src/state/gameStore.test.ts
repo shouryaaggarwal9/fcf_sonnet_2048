@@ -129,4 +129,10 @@ describe('game store', () => {
     store().move(legalMove(store().game));
     expect(store().tracker.tiles.filter((t) => t.birth === 'spawn')).toHaveLength(1);
   });
+
+  it('reports whether a move was accepted', () => {
+    useGameStore.setState({ game: cornerTile, lastTurn: null });
+    expect(store().move('left')).toBe(false);
+    expect(store().move('right')).toBe(true);
+  });
 });

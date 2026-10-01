@@ -21,7 +21,8 @@ interface GameStore {
   tracker: TrackerState;
   /** Null at the start of a game, and after any rejected move. */
   lastTurn: LastTurn | null;
-  move: (direction: Direction) => void;
+  /** Plays a move. Returns false, changing nothing, if the move was rejected. */
+  move: (direction: Direction) => boolean;
   /** Dismisses the win screen. */
   keepPlaying: () => void;
   /** Starts a new game. Pass a seed for a reproducible game, or omit it for a random one. */
@@ -43,7 +44,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   move: (direction) => {
     const { game, tracker } = get();
     const result = applyMove(game, direction);
-    if (!result.moved) return; // no state change, so no re-render
+    if (!result.moved) return false; // no state change, so no re-render
 
     // If the game was replaced without going through restart (tests do this), the tracker is
     // stale. Rebuild it from the old board first, so the trace always applies cleanly.
@@ -54,6 +55,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       tracker: advanceTracker(synced, result.moves, result.spawned),
       lastTurn: { gained: result.gained, spawned: result.spawned },
     });
+    return true;
   },
 
   keepPlaying: () => {
