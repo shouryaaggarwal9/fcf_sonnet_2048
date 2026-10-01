@@ -6,6 +6,7 @@ import { Board } from './ui/Board';
 import { GameOverlay } from './ui/GameOverlay';
 import { ScoreBox } from './ui/ScoreBox';
 import { boardToTiles } from './ui/tiles';
+import { useKeyboard } from './ui/useKeyboard';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
 
@@ -14,6 +15,8 @@ export default function App() {
   const move = useGameStore((state) => state.move);
   const keepPlaying = useGameStore((state) => state.keepPlaying);
   const restart = useGameStore((state) => state.restart);
+
+  useKeyboard(move);
 
   const tiles = useMemo(() => boardToTiles(game.board), [game.board]);
 
