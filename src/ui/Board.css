@@ -41,6 +41,25 @@
   z-index: 1;
 }
 
+/*
+ * Undo, or a game restored from another tab, replaces the board rather than moving tiles.
+ * Running the old positions backwards would read as a glitch, so the layer is remounted and
+ * this short opacity-only crossfade covers the swap. The layer is keyed on store.boardEpoch,
+ * which only changes on a replacement, so ordinary slides never trigger it.
+ */
+.board-tiles[data-fade="true"] {
+  animation: board-swap var(--restore-ms) linear;
+}
+
+@keyframes board-swap {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .board-cell {
   background: var(--cell-bg);
   border-radius: var(--gap);

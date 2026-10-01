@@ -7,7 +7,7 @@ import type { Board, GameState, GameStatus, Row } from '../engine';
  * Nothing here touches storage or the DOM: `persistence.ts` does that.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** Board sizes the engine is intended for. Wider or narrower is treated as corrupt. */
 export const MIN_BOARD_SIZE = 3;
@@ -95,6 +95,13 @@ export interface SavedData {
   game: GameState;
   best: BestScores;
   settings: Settings;
+  /**
+   * Games from before each accepted move, oldest first, so undo survives a reload.
+   * Added in v2. A v1 save simply has none.
+   */
+  history: readonly GameState[];
+  /** How many undos have ever been used. Recorded for a future daily-challenge limit. */
+  undos: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = { theme: 'system' };
@@ -119,7 +126,12 @@ function parseSettings(value: unknown): Settings {
     : DEFAULT_SETTINGS;
 }
 
-/** Validates the payload inside a version envelope. Null means "start fresh". */
+/**
+ * Validates the payload inside a version envelope. Null means "start fresh".
+ *
+ * `history` and `undos` are v2 additions. A v1 payload is upgraded by `migrate`, which
+ * fills them in here, so this stays a single description of the current shape.
+ */
 export function parseSavedData(value: unknown): SavedData | null {
   if (!isPlainObject(value)) return null;
   const game = parseGameState(value.game);
@@ -128,7 +140,17 @@ export function parseSavedData(value: unknown): SavedData | null {
     game,
     best: parseBest(value.best),
     settings: parseSettings(value.settings),
+    history: parseHistory(value.history),
+    undos: isCount(value.undos) ? value.undos : 0,
   };
+}
+
+/** Keeps only entries that are individually valid, so one bad snapshot is not fatal. */
+function parseHistory(value: unknown): readonly GameState[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => parseGameState(entry))
+    .filter((entry): entry is GameState => entry !== null);
 }
 
 export interface Envelope {
@@ -140,15 +162,23 @@ export interface Envelope {
  * Reads any supported envelope version. Returns null for an unknown or future version, so a
  * downgrade to an older build starts a fresh game instead of misreading newer fields.
  *
- * There is only v1 today. Each later shape adds a branch here rather than editing the
- * validator above, so old saves keep working.
+ * Each later shape adds a branch here rather than editing the validator above, so old saves
+ * keep working. v1 had no undo history; the v1 branch simply has none to restore.
  */
 export function migrate(raw: unknown): SavedData | null {
   if (!isPlainObject(raw)) return null;
   if (!Number.isInteger(raw.version)) return null;
 
   if (raw.version === SCHEMA_VERSION) return parseSavedData(raw.data);
-  // No older versions exist yet. A newer one is unreadable by design.
+
+  if (raw.version === 1) {
+    const parsed = parseSavedData(raw.data);
+    if (!parsed) return null;
+    // v1 saved no history, so there is nothing to undo after an upgrade.
+    return { ...parsed, history: [], undos: 0 };
+  }
+
+  // A newer version is unreadable by design.
   return null;
 }
 

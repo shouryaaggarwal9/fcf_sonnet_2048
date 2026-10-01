@@ -29,6 +29,38 @@
   gap: 0.5rem;
 }
 
+.app-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/*
+ * The Undo button is icon-only, so it needs a square target of at least 44px to stay
+ * comfortable on a phone. It matches the text buttons' height by sizing from the same font.
+ */
+.btn-icon {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5em;
+}
+
+.btn-icon svg {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  filter: none;
+}
+
 .tagline {
   margin: 0;
   font-size: 0.95rem;

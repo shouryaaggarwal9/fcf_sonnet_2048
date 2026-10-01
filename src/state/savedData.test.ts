@@ -147,8 +147,16 @@ describe('parseSavedData', () => {
       game: original,
       best: { 4: 900 },
       settings: { theme: 'dark' },
+      history: [],
+      undos: 0,
     });
-    expect(parsed).toEqual({ game: original, best: { 4: 900 }, settings: { theme: 'dark' } });
+    expect(parsed).toEqual({
+      game: original,
+      best: { 4: 900 },
+      settings: { theme: 'dark' },
+      history: [],
+      undos: 0,
+    });
   });
 
   it('falls back to defaults when best or settings are missing or unusable', () => {
@@ -157,11 +165,15 @@ describe('parseSavedData', () => {
       game: original,
       best: {},
       settings: DEFAULT_SETTINGS,
+      history: [],
+      undos: 0,
     });
     expect(parseSavedData({ game: original, best: 'nope', settings: 7 })).toEqual({
       game: original,
       best: {},
       settings: DEFAULT_SETTINGS,
+      history: [],
+      undos: 0,
     });
   });
 
@@ -170,6 +182,8 @@ describe('parseSavedData', () => {
       game: game(),
       best: { 2: 500, 4: 900, 12: 100, 5: -1, 6: 'x', 7: MAX_PLAUSIBLE_SCORE + 1 },
       settings: { theme: 'light' },
+      history: [],
+      undos: 0,
     });
     expect(parsed?.best).toEqual({ 4: 900 });
   });
@@ -188,7 +202,13 @@ describe('parseSavedData', () => {
 });
 
 describe('migrate', () => {
-  const data = { game: game(), best: { 4: 100 }, settings: { theme: 'system' } };
+  const data = {
+    game: game(),
+    best: { 4: 100 },
+    settings: { theme: 'system' },
+    history: [],
+    undos: 0,
+  };
 
   it('reads the current version', () => {
     expect(migrate({ version: SCHEMA_VERSION, data })).toEqual(data);

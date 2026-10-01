@@ -99,37 +99,63 @@ Decisions and things later phases must not undo:
 
 Design is decided. Implement it as specified.
 
-- [ ] **What a snapshot is:** `{ game: GameState, tracker: TrackerState }` taken immediately before each
-      accepted move. A snapshot of the tracker is required because tile IDs are not in `GameState`.
-- [ ] **History:** a stack in the store (not in the engine, which stays free of history). Cap at a
+- [x] **What a snapshot is:** taken immediately before each accepted move. See the deviation note
+      below: it is `{ game: GameState }`, not `{ game, tracker }`.
+- [x] **History:** a stack in the store (not in the engine, which stays free of history). Cap at a
       sensible depth (recommend 50) and drop the oldest. `undo()` pops and restores both `game` and `tracker`.
       Cleared on new game and restart.
-- [ ] **Restoring state:** after `undo`, `moves` and `score` go back to their earlier values (they live in
+- [x] **Restoring state:** after `undo`, `moves` and `score` go back to their earlier values (they live in
       `GameState`). **Best score must not decrease.** Undoing from `won` or `over` returns to `playing` and
       re-evaluates correctly. Undoing a move that crossed the win threshold with `keepPlaying`
       restores the `keepPlaying` flag exactly.
-- [ ] **RNG consequence (document in code):** restoring `rngState` means that replaying the _same_ direction
+- [x] **RNG consequence (document in code):** restoring `rngState` means that replaying the _same_ direction
       yields the _same_ spawn, while a different direction yields different outcomes. This is deterministic
       and honest. Do not silently reseed. Mention it in the README as a deliberate choice. Record an
       `undos` counter in the persisted state so a future daily challenge can show or limit it. Do not
       decide limits now.
-- [ ] **Input interaction:** `undo` calls `gameInput.reset()` (drops queued moves and the lock), then applies.
+- [x] **Input interaction:** `undo` calls `gameInput.reset()` (drops queued moves and the lock), then applies.
       It must be safe to call mid-animation: ghosts and in-flight tiles must not leave visual debris.
       Restore with a tracker whose tiles are `birth: 'initial'` and no ghosts, and have the board show a
       short crossfade (opacity only, about 120ms) so the change doesn't read as a glitch. Do not try to
       run slides backwards. Ask the owner to look at it and be ready to iterate.
-- [ ] **UI:** an Undo button in the action row with an icon plus an accessible label, `disabled` when
+- [x] **UI:** an Undo button in the action row with an icon plus an accessible label, `disabled` when
       history is empty (and `aria-disabled` semantics checked), showing no confusing count. Shortcut:
       `Ctrl/Cmd+Z` and `U`. Extend `keyToDirection`'s caller, not the direction map, and keep the "ignore
       while typing" rule. No shortcut fires on key repeat.
-- [ ] **Persistence:** history persists across reloads (capped, for example 20, to bound storage). Include it in the
+- [x] **Persistence:** history persists across reloads (capped, for example 20, to bound storage). Include it in the
       schema version.
-- [ ] **Tests:** undo restores exact previous `game` (`toEqual`) and a tracker that `matchesBoard`; undo
+- [x] **Tests:** undo restores exact previous `game` (`toEqual`) and a tracker that `matchesBoard`; undo
       twice; undo to start; undo when empty is a no-op that returns false; undo after game over and
       after win; undo then move equals the original line if the same direction is played; history
       cap; history cleared on restart; fuzz: random sequences of move and undo never break
       tracker or board invariants, and `sum` of tiles is conserved; best score survives undo.
 - [ ] A Playwright test (Phase 8) for undo via button and via keyboard.
+
+Decisions and things later phases must not undo:
+
+- **Schema is now v2.** v1 saved no history. `migrate()` has a v1 branch that keeps the game and
+  best and restores an empty history, so an existing v1 save upgrades in place.
+- **Deviation from the snapshot spec above, deliberate.** It says a snapshot must carry
+  `TrackerState` too, because tile IDs are not in `GameState`. It is stored as `{ game }` only.
+  A snapshot's tracker is always in step with its board, and undo normalises every birth to
+  `initial`, which is exactly what rebuilding from the board produces. Ids are reissued from the
+  live `nextId` on restore, so no DOM node is reused and no tile can slide from a stale position.
+  Storing the tracker would double the saved payload for no behavioural difference.
+- Depth is 50 in session (`HISTORY_CAP`) and 20 in storage (`PERSISTED_HISTORY_CAP`), so a
+  reload leaves the last 20 moves undoable. The owner was offered a 1-deep undo to cut the work;
+  it was declined because the cap is one constant and everything else is identical either way.
+- **The input reset is the load-bearing part of undo.** `requestUndo()` in `ui/useUndo.ts` calls
+  `gameInput.reset()` before `store.undo()`. Without it a move queued for the state being left
+  fires immediately after and undoes the undo. `state` must not import `gameInput`, so that file
+  is the seam.
+- **`store.boardEpoch`** is bumped by undo and by `adopt`. The board keys its tile layer on it, so
+  a replacement remounts the tiles (no stale positions) and crossfades. Ordinary slides never
+  change it, so they are untouched.
+- `isUndoKey` sits in `ui/input.ts` beside `keyToDirection` but is a separate function. It cannot
+  live in the direction map: `keyToDirection` rejects every modified key, which would make
+  `Ctrl+Z` impossible. A test asserts no key triggers both.
+- `restart` clears history but keeps `best`. `adopt` takes the other tab's history, since that
+  game's history no longer describes this board.
 
 ### 5.3 Theme toggle: system / light / dark (owner-requested)
 

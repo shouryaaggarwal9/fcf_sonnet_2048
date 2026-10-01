@@ -50,13 +50,25 @@ const play = (game: GameState, directions: readonly ('up' | 'down' | 'left' | 'r
 
 describe('saveTo and loadSaved', () => {
   it('round-trips a game, best score, and settings', () => {
-    const data = { game: newGame(42), best: { 4: 1234 }, settings: { theme: 'dark' as const } };
+    const data = {
+      game: newGame(42),
+      best: { 4: 1234 },
+      settings: { theme: 'dark' as const },
+      history: [],
+      undos: 0,
+    };
     expect(saveTo(storage, data)).toBe(true);
     expect(loadSaved(storage)).toEqual(data);
   });
 
   it('stores a versioned envelope, not a bare payload', () => {
-    saveTo(storage, { game: newGame(1), best: {}, settings: { theme: 'system' } });
+    saveTo(storage, {
+      game: newGame(1),
+      best: {},
+      settings: { theme: 'system' },
+      history: [],
+      undos: 0,
+    });
     const raw = JSON.parse(storage.map.get(STORAGE_KEY) ?? '');
     expect(raw.version).toBe(SCHEMA_VERSION);
     expect(raw.data.game.board).toBeDefined();
@@ -80,7 +92,13 @@ describe('saveTo and loadSaved', () => {
   });
 
   it('returns null for a wrong or future version', () => {
-    const data = { game: newGame(1), best: {}, settings: { theme: 'system' as const } };
+    const data = {
+      game: newGame(1),
+      best: {},
+      settings: { theme: 'system' as const },
+      history: [],
+      undos: 0,
+    };
     storage.map.set(STORAGE_KEY, JSON.stringify({ version: 99, data }));
     expect(loadSaved(storage)).toBeNull();
 
@@ -89,7 +107,13 @@ describe('saveTo and loadSaved', () => {
   });
 
   it('returns null for a tampered board, rather than restoring a broken game', () => {
-    const data = { game: newGame(1), best: {}, settings: { theme: 'system' as const } };
+    const data = {
+      game: newGame(1),
+      best: {},
+      settings: { theme: 'system' as const },
+      history: [],
+      undos: 0,
+    };
     saveTo(storage, data);
     const raw = JSON.parse(storage.map.get(STORAGE_KEY) ?? '');
     raw.data.game.board = [
@@ -135,7 +159,13 @@ describe('saveTo and loadSaved', () => {
 describe('restore', () => {
   it('returns the saved game so a reload continues the same game', () => {
     const saved = play(newGame(7), ['left', 'left', 'up', 'left']);
-    saveTo(storage, { game: saved, best: { 4: 500 }, settings: { theme: 'light' } });
+    saveTo(storage, {
+      game: saved,
+      best: { 4: 500 },
+      settings: { theme: 'light' },
+      history: [],
+      undos: 0,
+    });
 
     const result = restore(storage, 999);
     expect(result.game).toEqual(saved);
@@ -146,7 +176,13 @@ describe('restore', () => {
   it('continues identically to the original after a save and restore', () => {
     // Determinism through rngState: the same next move must give the same board and spawn.
     const original = play(newGame(11), ['left', 'up', 'right', 'up', 'left']);
-    saveTo(storage, { game: original, best: {}, settings: { theme: 'system' } });
+    saveTo(storage, {
+      game: original,
+      best: {},
+      settings: { theme: 'system' },
+      history: [],
+      undos: 0,
+    });
 
     const restored = restore(storage, 12345).game;
     expect(applyMove(restored, 'down').state).toEqual(applyMove(original, 'down').state);
@@ -172,7 +208,13 @@ describe('restore', () => {
 
   it('keeps the saved size rather than the requested one', () => {
     const three = play(newGame(3, 3), ['left']);
-    saveTo(storage, { game: three, best: { 3: 10 }, settings: { theme: 'system' } });
+    saveTo(storage, {
+      game: three,
+      best: { 3: 10 },
+      settings: { theme: 'system' },
+      history: [],
+      undos: 0,
+    });
     const result: Restore = restore(storage, 5, 4);
     expect(result.game.board).toHaveLength(3);
   });

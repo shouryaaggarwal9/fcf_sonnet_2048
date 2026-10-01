@@ -45,7 +45,7 @@ export function safeStorage(): StorageLike | null {
 
 /** Everything a fresh install starts with. */
 export function emptySave(): SavedData {
-  return { game: newGame(1), best: {}, settings: DEFAULT_SETTINGS };
+  return { game: newGame(1), best: {}, settings: DEFAULT_SETTINGS, history: [], undos: 0 };
 }
 
 /**
@@ -86,6 +86,7 @@ export interface Restore {
   game: GameState;
   best: BestScores;
   settings: Settings;
+  history: readonly GameState[];
 }
 
 /**
@@ -94,8 +95,20 @@ export interface Restore {
  */
 export function restore(storage: StorageLike | null, randomSeed: number, size = 4): Restore {
   const saved = loadSaved(storage);
-  if (saved) return { game: saved.game, best: saved.best, settings: saved.settings };
-  return { game: newGame(randomSeed, size), best: {}, settings: DEFAULT_SETTINGS };
+  if (saved) {
+    return {
+      game: saved.game,
+      best: saved.best,
+      settings: saved.settings,
+      history: saved.history,
+    };
+  }
+  return {
+    game: newGame(randomSeed, size),
+    best: {},
+    settings: DEFAULT_SETTINGS,
+    history: [],
+  };
 }
 
 export type { BestScores, SavedData, Settings, ThemePreference } from './savedData';

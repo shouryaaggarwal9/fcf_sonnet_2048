@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type KeyInfo, keyToDirection, swipeToDirection } from './input';
+import { isUndoKey, type KeyInfo, keyToDirection, swipeToDirection } from './input';
 
 function press(code: string, overrides: Partial<KeyInfo> = {}): KeyInfo {
   return {
@@ -12,6 +12,65 @@ function press(code: string, overrides: Partial<KeyInfo> = {}): KeyInfo {
     ...overrides,
   };
 }
+
+describe('isUndoKey', () => {
+  it('accepts U on its own', () => {
+    expect(isUndoKey(press('KeyU'))).toBe(true);
+  });
+
+  it('accepts Ctrl+Z and Cmd+Z', () => {
+    expect(isUndoKey(press('KeyZ', { ctrlKey: true }))).toBe(true);
+    expect(isUndoKey(press('KeyZ', { metaKey: true }))).toBe(true);
+  });
+
+  it('rejects plain Z, which is not a shortcut', () => {
+    expect(isUndoKey(press('KeyZ'))).toBe(false);
+  });
+
+  it('rejects U with a modifier, so it cannot collide with a browser shortcut', () => {
+    expect(isUndoKey(press('KeyU', { ctrlKey: true }))).toBe(false);
+    expect(isUndoKey(press('KeyU', { metaKey: true }))).toBe(false);
+  });
+
+  it('rejects Ctrl+Cmd+Z, which no browser uses and no player means', () => {
+    expect(isUndoKey(press('KeyZ', { ctrlKey: true, metaKey: true }))).toBe(false);
+  });
+
+  it('never fires on key repeat', () => {
+    expect(isUndoKey(press('KeyU', { repeat: true }))).toBe(false);
+    expect(isUndoKey(press('KeyZ', { ctrlKey: true, repeat: true }))).toBe(false);
+  });
+
+  it('never fires during IME composition', () => {
+    expect(isUndoKey(press('KeyU', { isComposing: true }))).toBe(false);
+  });
+
+  it('never fires with Alt held, matching the direction rules', () => {
+    expect(isUndoKey(press('KeyU', { altKey: true }))).toBe(false);
+    expect(isUndoKey(press('KeyZ', { ctrlKey: true, altKey: true }))).toBe(false);
+  });
+
+  it('rejects every other key', () => {
+    for (const code of ['ArrowUp', 'KeyW', 'Enter', 'Space', 'KeyY', 'F5']) {
+      expect(isUndoKey(press(code))).toBe(false);
+    }
+  });
+
+  it('does not overlap with the direction map, so no key triggers both', () => {
+    for (const code of ['KeyU', 'KeyZ', 'ArrowUp', 'KeyW', 'Enter']) {
+      const undoWins = isUndoKey(press(code));
+      const isDirection = keyToDirection(press(code)) !== null;
+      expect(undoWins && isDirection, code).toBe(false);
+    }
+  });
+
+  it('still recognises undo when Ctrl is held, which keyToDirection refuses', () => {
+    // This is the asymmetry that matters: keyToDirection ignores every modified key, so undo
+    // cannot live inside it without losing Ctrl+Z entirely.
+    expect(keyToDirection(press('KeyZ', { ctrlKey: true }))).toBeNull();
+    expect(isUndoKey(press('KeyZ', { ctrlKey: true }))).toBe(true);
+  });
+});
 
 describe('keyToDirection', () => {
   it.each([

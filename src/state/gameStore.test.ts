@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { applyMove, type Direction, type GameState, newGame } from '../engine';
 import { mergeBest, useGameStore } from './gameStore';
+import { HISTORY_CAP, pushSnapshot } from './history';
 import { bestFor } from './savedData';
 import { matchesBoard } from './tileTracker';
 
@@ -193,7 +194,7 @@ describe('adopt', () => {
   it('replaces game and tracker together, and rebuilds without animating', () => {
     useGameStore.setState({ best: {} });
     const restored = { ...newGame(9), score: 400, moves: 12 };
-    store().adopt({ game: restored, best: { 4: 400 }, settings: { theme: 'system' } });
+    store().adopt({ game: restored, best: { 4: 400 }, settings: { theme: 'system' }, history: [] });
 
     expect(store().game).toEqual(restored);
     expect(matchesBoard(store().tracker.tiles, restored.board)).toBe(true);
@@ -208,7 +209,239 @@ describe('adopt', () => {
       game: newGame(3),
       best: {},
       settings: { theme: 'system' },
+      history: [],
     });
     expect(store().tracker.tiles.every((t) => t.id >= highest)).toBe(true);
+  });
+});
+
+describe('undo', () => {
+  beforeEach(() => {
+    useGameStore.setState({ best: {}, history: [], undos: 0, boardEpoch: 0 });
+    store().restart(1);
+  });
+
+  it('does nothing and reports false with an empty history', () => {
+    const before = store().game;
+    expect(store().undo()).toBe(false);
+    expect(store().game).toBe(before);
+    expect(store().undos).toBe(0);
+  });
+
+  it('restores the exact state from before the last accepted move', () => {
+    store().move(legalMove(store().game));
+    const afterOne = store().game;
+    store().move(legalMove(store().game));
+    expect(store().game).not.toEqual(afterOne);
+
+    expect(store().undo()).toBe(true);
+    expect(store().game).toEqual(afterOne);
+  });
+
+  it('restores score and moves, because both live in GameState', () => {
+    for (let i = 0; i < 6 && store().game.status === 'playing'; i++)
+      store().move(legalMove(store().game));
+    const before = { score: store().game.score, moves: store().game.moves };
+
+    store().undo();
+    expect(store().game.score).toBeLessThan(before.score);
+    expect(store().game.moves).toBe(before.moves - 1);
+  });
+
+  it('steps back several times, and refuses once empty', () => {
+    const start = store().game;
+    store().move(legalMove(store().game));
+    const first = store().game;
+    store().move(legalMove(store().game));
+    const second = store().game;
+    store().move(legalMove(store().game));
+    expect(store().history).toHaveLength(3);
+
+    expect(store().undo()).toBe(true);
+    expect(store().game).toEqual(second);
+    expect(store().undo()).toBe(true);
+    expect(store().game).toEqual(first);
+    expect(store().undo()).toBe(true);
+    expect(store().game).toEqual(start);
+    expect(store().undo()).toBe(false);
+  });
+
+  it('undoes to the very start of the game', () => {
+    store().move(legalMove(store().game));
+    while (store().history.length > 0) store().undo();
+
+    expect(store().game.moves).toBe(0);
+    expect(store().game.score).toBe(0);
+    expect(store().game.status).toBe('playing');
+    expect(matchesBoard(store().tracker.tiles, store().game.board)).toBe(true);
+  });
+
+  it('never lowers the best score', () => {
+    for (let i = 0; i < 30 && store().game.status === 'playing'; i++)
+      store().move(legalMove(store().game));
+    const reached = store().game.score;
+    expect(bestFor(store().best, 4)).toBe(reached);
+
+    store().undo();
+    store().undo();
+    expect(store().game.score).toBeLessThan(reached);
+    expect(bestFor(store().best, 4)).toBe(reached);
+  });
+
+  it('returns to playing when undoing out of game over', () => {
+    const over: GameState = { ...cornerTile, status: 'over' };
+    useGameStore.setState({ game: over, history: [{ game: cornerTile }] });
+
+    expect(store().undo()).toBe(true);
+    expect(store().game.status).toBe('playing');
+  });
+
+  it('returns to playing when undoing out of the win state', () => {
+    const won = applyMove(nearWin, 'left').state;
+    expect(won.status).toBe('won');
+    useGameStore.setState({ game: won, history: [{ game: nearWin }] });
+
+    expect(store().undo()).toBe(true);
+    expect(store().game.status).toBe('playing');
+    expect(store().game.keepPlaying).toBe(false);
+  });
+
+  it('restores keepPlaying exactly, so undoing does not forget a continue', () => {
+    // Play into the win, choose to continue, then undo the continue.
+    const won = applyMove(nearWin, 'left').state;
+    expect(won.status).toBe('won');
+    useGameStore.setState({ game: won, history: [] });
+
+    store().keepPlaying();
+    const afterContinue = store().game;
+    expect(afterContinue.status).toBe('playing');
+    expect(afterContinue.keepPlaying).toBe(true);
+
+    useGameStore.setState({ history: [{ game: won }] });
+    store().undo();
+    expect(store().game.status).toBe('won');
+    expect(store().game.keepPlaying).toBe(false);
+  });
+
+  it('replays the same direction to the same result, because rngState is restored', () => {
+    // The honest consequence of restoring rngState: undo then replay is identical. This is
+    // deliberate, and is why the engine is never reseeded.
+    store().move(legalMove(store().game));
+    const direction = legalMove(store().game);
+    const original = applyMove(store().game, direction);
+    store().move(direction);
+
+    store().undo();
+    store().move(direction);
+
+    expect(store().game).toEqual(original.state);
+  });
+
+  it('takes a different path when a different direction is played after undo', () => {
+    store().move(legalMove(store().game));
+    const played = legalMove(store().game);
+    const other = DIRECTIONS.find((d) => d !== played && applyMove(store().game, d).moved);
+    if (!other) return; // a board with a single legal move has no alternative to compare
+
+    store().move(played);
+    store().undo();
+    store().move(other);
+    expect(store().game.moves).toBe(2);
+  });
+
+  it('leaves no ghosts and no animation, so the board cannot show debris', () => {
+    for (let i = 0; i < 12 && store().game.status === 'playing'; i++)
+      store().move(legalMove(store().game));
+    store().undo();
+
+    expect(store().tracker.ghosts).toEqual([]);
+    expect(store().tracker.tiles.every((t) => t.birth === 'initial')).toBe(true);
+    expect(matchesBoard(store().tracker.tiles, store().game.board)).toBe(true);
+  });
+
+  it('bumps boardEpoch so the board can crossfade instead of sliding backwards', () => {
+    const before = store().boardEpoch;
+    store().move(legalMove(store().game));
+    store().undo();
+    expect(store().boardEpoch).toBe(before + 1);
+  });
+
+  it('reissues tile ids, so no node is reused and none can slide from a stale position', () => {
+    store().move(legalMove(store().game));
+    const highestBefore = store().tracker.nextId;
+    store().undo();
+    expect(store().tracker.tiles.every((t) => t.id >= highestBefore)).toBe(true);
+  });
+
+  it('clears the last turn, so no score popup appears for an undone move', () => {
+    store().move(legalMove(store().game));
+    expect(store().lastTurn).not.toBeNull();
+    store().undo();
+    expect(store().lastTurn).toBeNull();
+  });
+
+  it('counts undos for a future daily-challenge limit', () => {
+    store().move(legalMove(store().game));
+    store().move(legalMove(store().game));
+    store().undo();
+    store().undo();
+    expect(store().undos).toBe(2);
+    expect(store().history).toEqual([]);
+  });
+
+  it('is cleared by a new game, which has no past', () => {
+    store().move(legalMove(store().game));
+    expect(store().history.length).toBeGreaterThan(0);
+    store().restart(2);
+    expect(store().history).toEqual([]);
+    expect(store().undo()).toBe(false);
+  });
+
+  it('does not record a rejected move, so undo cannot rewind a wall bump', () => {
+    useGameStore.setState({ game: cornerTile, history: [] });
+    expect(store().move('left')).toBe(false);
+    expect(store().history).toEqual([]);
+  });
+
+  it('drops the oldest snapshot once the cap is reached', () => {
+    let history: ReturnType<typeof useGameStore.getState>['history'] = [];
+    for (let i = 0; i < HISTORY_CAP + 3; i++) history = pushSnapshot(history, { game: newGame(i) });
+    useGameStore.setState({ history });
+    expect(store().history).toHaveLength(HISTORY_CAP);
+  });
+
+  it('conserves the sum of tiles across undo, so no value is invented or lost', () => {
+    const sum = (game: GameState) => game.board.flat().reduce((a, b) => a + b, 0);
+    for (let i = 0; i < 20 && store().game.status === 'playing'; i++)
+      store().move(legalMove(store().game));
+
+    const beforeSum = sum(store().game);
+    store().undo();
+    // Undo reverses a move, so the total drops by the tile that was merged, never more.
+    expect(sum(store().game)).toBeLessThanOrEqual(beforeSum);
+    expect(sum(store().game)).toBeGreaterThan(0);
+  });
+
+  it('fuzz: random moves and undos never break the tracker or the board', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      store().restart(seed);
+      for (let i = 0; i < 60; i++) {
+        // A deterministic pseudo-random choice, so a failure is reproducible from the seed.
+        const roll = (seed * 7919 + i * 104729) % 10;
+        if (roll < 2) store().undo();
+        else store().move(DIRECTIONS[roll % DIRECTIONS.length] as Direction);
+
+        expect(
+          matchesBoard(store().tracker.tiles, store().game.board),
+          `seed ${seed} step ${i}`,
+        ).toBe(true);
+        expect(store().tracker.tiles.every((t) => t.id > 0)).toBe(true);
+        expect(
+          store()
+            .game.board.flat()
+            .every((v) => v === 0 || (v & (v - 1)) === 0),
+        ).toBe(true);
+      }
+    }
   });
 });

@@ -7,6 +7,7 @@ import {
   newGame,
   type Tile,
 } from '../engine';
+import { forPersisting, popSnapshot, pushSnapshot, type Snapshot, undoable } from './history';
 import {
   clearSaved,
   loadSaved,
@@ -34,8 +35,20 @@ interface GameStore {
   lastTurn: LastTurn | null;
   /** Highest score ever reached, per board size. Never decreases. */
   best: BestScores;
+  /** States from before each accepted move, oldest first. Bounded by HISTORY_CAP. */
+  history: readonly Snapshot[];
+  /** How many undos have been used this session. Persisted for a future daily limit. */
+  undos: number;
+  /**
+   * Bumped whenever the board is replaced wholesale (undo, another tab, restore). The board
+   * uses it to crossfade instead of trying to animate the change, which would read as a
+   * glitch or as tiles sliding backwards.
+   */
+  boardEpoch: number;
   /** Plays a move. Returns false, changing nothing, if the move was rejected. */
   move: (direction: Direction) => boolean;
+  /** Steps back one move. Returns false when there is nothing to undo. */
+  undo: () => boolean;
   /** Dismisses the win screen. */
   keepPlaying: () => void;
   /** Starts a new game. Pass a seed for a reproducible game, or omit it for a random one. */
@@ -56,16 +69,24 @@ function randomSeed(): number {
  * Reads the save and works out the starting state. The tracker is rebuilt from the board
  * with birth 'initial', so a restored game appears without playing its entrance animation.
  */
-export function initialState(): { game: GameState; tracker: TrackerState; best: BestScores } {
+export function initialState(): {
+  game: GameState;
+  tracker: TrackerState;
+  best: BestScores;
+  history: readonly Snapshot[];
+  undos: number;
+} {
   const saved = loadSaved(storageOrNull());
   if (!saved) {
     const game = newGame(randomSeed());
-    return { game, tracker: createTracker(game.board), best: {} };
+    return { game, tracker: createTracker(game.board), best: {}, history: [], undos: 0 };
   }
   return {
     game: saved.game,
     tracker: createTracker(saved.game.board, 1, 'initial'),
     best: saved.best,
+    history: saved.history.map((game) => ({ game })),
+    undos: saved.undos,
   };
 }
 
@@ -86,6 +107,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   tracker: start.tracker,
   lastTurn: null,
   best: start.best,
+  history: start.history,
+  undos: start.undos,
+  boardEpoch: 0,
 
   move: (direction) => {
     const { game, tracker } = get();
@@ -103,6 +127,28 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       // recordBest returns the same object when this is not a new record, so this cannot
       // cause a render of its own.
       best: recordBest(get().best, result.state.board.length, result.state.score),
+      // Snapshot the state we are leaving, so undo has somewhere to go back to. A rejected
+      // move returns above, so the history only ever holds real moves.
+      history: pushSnapshot(get().history, { game }),
+    });
+    return true;
+  },
+
+  undo: () => {
+    const target = undoable(get().history);
+    if (!target) return false;
+
+    // Ids are reissued from the live nextId rather than restored, so no DOM node is reused.
+    // That means no tile can slide from where it used to be, and birth is 'initial' so
+    // nothing animates in. The board crossfades instead, via boardEpoch.
+    set({
+      game: target.game,
+      tracker: createTracker(target.game.board, get().tracker.nextId, 'initial'),
+      history: popSnapshot(get().history),
+      lastTurn: null,
+      undos: get().undos + 1,
+      boardEpoch: get().boardEpoch + 1,
+      // Best is deliberately untouched: undoing a good move must not lower a record.
     });
     return true;
   },
@@ -119,7 +165,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       game,
       tracker: createTracker(game.board, get().tracker.nextId, 'fresh'),
       lastTurn: null,
-      // Best is deliberately kept: a new game never lowers a record.
+      // A new game has no past, so there is nothing to undo. Best is kept: a new game never
+      // lowers a record.
+      history: [],
     });
   },
 
@@ -131,6 +179,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       tracker: createTracker(restored.game.board, get().tracker.nextId, 'initial'),
       lastTurn: null,
       best: restored.best,
+      // Another tab's game supersedes ours, so its history no longer describes this board.
+      history: restored.history.map((game) => ({ game })),
+      boardEpoch: get().boardEpoch + 1,
     });
   },
 }));
@@ -150,9 +201,15 @@ function cancelPendingSave(): void {
 }
 
 function currentSave(): SavedData {
-  const { game, best } = useGameStore.getState();
+  const { game, best, history, undos } = useGameStore.getState();
   // Theme is hard-coded until Phase 5.3, where settings become user-controlled.
-  return { game, best, settings: { theme: 'system' } };
+  return {
+    game,
+    best,
+    settings: { theme: 'system' },
+    history: forPersisting(history),
+    undos,
+  };
 }
 
 /** Writes now. Used on page hide, where a pending debounce would never fire. */
@@ -178,7 +235,8 @@ export function scheduleSave(): void {
  */
 export function startPersistence(): () => void {
   const unsubscribe = useGameStore.subscribe((state, previous) => {
-    if (state.game === previous.game) return; // a rejected move changes nothing
+    // A rejected move changes nothing. An undo does change the game, so it saves too.
+    if (state.game === previous.game) return;
     scheduleSave();
   });
 
@@ -233,7 +291,12 @@ export function startStorageSync(): () => void {
     if (!incoming) return;
 
     const best = mergeBest(useGameStore.getState().best, incoming.best);
-    useGameStore.getState().adopt({ game: incoming.game, best, settings: incoming.settings });
+    useGameStore.getState().adopt({
+      game: incoming.game,
+      best,
+      settings: incoming.settings,
+      history: incoming.history,
+    });
   };
 
   window.addEventListener('storage', onStorage);

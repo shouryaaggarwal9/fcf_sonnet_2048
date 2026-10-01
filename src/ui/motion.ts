@@ -18,6 +18,9 @@ export const OVERLAY_FADE_MS = 200;
 /** How long a floating "+N" takes to rise off the Score box and fade out. */
 export const SCORE_GAIN_MS = 520;
 
+/** Crossfade covering a wholesale board replacement, such as undo. Opacity only. */
+export const RESTORE_MS = 120;
+
 /** Replaces every slide, pop and spawn when the player asked for less movement. */
 export const REDUCED_FADE_MS = 120;
 
@@ -41,6 +44,7 @@ export const motionVars = {
   '--pop-ms': `${POP_MS}ms`,
   '--overlay-fade-ms': `${OVERLAY_FADE_MS}ms`,
   '--gain-ms': `${SCORE_GAIN_MS}ms`,
+  '--restore-ms': `${RESTORE_MS}ms`,
   '--fade-ms': `${REDUCED_FADE_MS}ms`,
   '--settle-ms': `${moveSettleMs(false)}ms`,
   '--settle-ms-reduced': `${moveSettleMs(true)}ms`,

@@ -33,6 +33,20 @@ export function keyToDirection(event: KeyInfo): Direction | null {
 export const MIN_SWIPE_PX = 24;
 
 /**
+ * True if a key press means "undo". `U` on its own, or `Ctrl+Z` / `Cmd+Z`.
+ *
+ * Kept apart from `keyToDirection` on purpose: the direction map is a closed set, and undo
+ * is not a direction. Both follow the same rules, though, so undo cannot fire on key repeat,
+ * during IME composition, or while Alt is held.
+ */
+export function isUndoKey(event: KeyInfo): boolean {
+  if (event.repeat || event.isComposing || event.altKey) return false;
+  if (event.code === 'KeyU') return !event.ctrlKey && !event.metaKey;
+  if (event.code === 'KeyZ') return event.ctrlKey !== event.metaKey; // exactly one, not both
+  return false;
+}
+
+/**
  * Turns a drag vector into a direction, or null if it is too short or exactly diagonal.
  * The longer axis wins. Screen coordinates: +x is right, +y is down.
  */

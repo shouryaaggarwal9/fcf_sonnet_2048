@@ -12,6 +12,7 @@ import { ScoreBox } from './ui/ScoreBox';
 import { ScorePopups } from './ui/ScorePopups';
 import { useKeyboard } from './ui/useKeyboard';
 import { useSwipe } from './ui/useSwipe';
+import { useUndo } from './ui/useUndo';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
 
@@ -20,6 +21,8 @@ export default function App() {
   const tracker = useGameStore((state) => state.tracker);
   const lastTurn = useGameStore((state) => state.lastTurn);
   const best = useGameStore((state) => state.best);
+  const canUndo = useGameStore((state) => state.history.length > 0);
+  const boardEpoch = useGameStore((state) => state.boardEpoch);
   const keepPlaying = useGameStore((state) => state.keepPlaying);
   const restart = useGameStore((state) => state.restart);
 
@@ -28,7 +31,8 @@ export default function App() {
   useEffect(() => startPersistence(), []);
   useEffect(() => startStorageSync(), []);
 
-  useKeyboard(gameInput.input);
+  const undo = useUndo();
+  useKeyboard({ onMove: gameInput.input, onUndo: undo });
   const swipe = useSwipe(gameInput.input);
 
   const tiles = useMemo(() => drawOrder(tracker), [tracker]);
@@ -58,13 +62,42 @@ export default function App() {
         <p className="tagline">
           Join the tiles, reach <strong>2048</strong>.
         </p>
-        <button type="button" className="btn" onClick={handleRestart}>
-          New game
-        </button>
+        <div className="app-buttons">
+          <button
+            type="button"
+            className="btn btn-icon"
+            onClick={undo}
+            disabled={!canUndo}
+            aria-label={canUndo ? 'Undo last move' : 'Nothing to undo'}
+          >
+            {/* A curved arrow. Decorative: the label above carries the meaning. */}
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M9 14 4 9l5-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M4 9h9a6 6 0 0 1 0 12h-3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button type="button" className="btn" onClick={handleRestart}>
+            New game
+          </button>
+        </div>
       </div>
 
       <div className="swipe-area" {...swipe}>
-        <Board size={game.board.length} tiles={tiles}>
+        <Board size={game.board.length} tiles={tiles} epoch={boardEpoch}>
           <GameOverlay
             status={game.status}
             score={game.score}
