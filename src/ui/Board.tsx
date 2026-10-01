@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Tile } from './Tile';
 import type { TileView } from './tiles';
 import './Board.css';
@@ -6,9 +6,10 @@ import './Board.css';
 interface BoardProps {
   size: number;
   tiles: readonly TileView[];
+  children?: ReactNode;
 }
 
-export function Board({ size, tiles }: BoardProps) {
+export function Board({ size, tiles, children }: BoardProps) {
   const cellIds = Array.from({ length: size * size }, (_, index) => `cell-${index}`);
 
   return (
@@ -25,6 +26,7 @@ export function Board({ size, tiles }: BoardProps) {
           ))}
         </div>
       </div>
+      {children}
     </div>
   );
 }

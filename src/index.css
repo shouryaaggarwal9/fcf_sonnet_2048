@@ -2,10 +2,19 @@
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
 
+  --board-width: min(92vw, 60dvh, 480px);
+
   --page-bg: #faf8ef;
   --text: #776e65;
   --board-bg: #bbada0;
   --cell-bg: rgb(238 228 218 / 0.35);
+  --panel-bg: #bbada0;
+  --panel-fg: #f9f6f2;
+  --btn-bg: #8f7a66;
+  --btn-fg: #f9f6f2;
+  --btn-primary-bg: #f65e3b;
+  --overlay-over: rgb(238 228 218 / 0.8);
+  --overlay-won: rgb(237 194 46 / 0.6);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -14,6 +23,11 @@
     --text: #d8cfc4;
     --board-bg: #3a3530;
     --cell-bg: rgb(255 255 255 / 0.06);
+    --panel-bg: #3a3530;
+    --btn-bg: #5a5145;
+    --btn-primary-bg: #d9482a;
+    --overlay-over: rgb(27 26 23 / 0.82);
+    --overlay-won: rgb(160 125 20 / 0.72);
   }
 }
 
@@ -28,13 +42,31 @@ body {
   min-height: 100dvh;
   display: grid;
   place-items: center;
+  padding: 1rem;
   background: var(--page-bg);
   color: var(--text);
 }
 
-main {
-  display: grid;
-  justify-items: center;
-  gap: 1rem;
-  padding: 1rem;
+.btn {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.6em 1.1em;
+  border: 0;
+  border-radius: 0.5em;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  cursor: pointer;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+.btn:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--btn-primary-bg);
 }

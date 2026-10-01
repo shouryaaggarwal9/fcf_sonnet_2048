@@ -1,8 +1,7 @@
 .board {
-  /* The board is sized once here, and everything inside derives from it. */
-  --board-width: min(92vw, 70dvh, 480px);
   --gap: calc(var(--board-width) * 0.12 / var(--size));
 
+  position: relative; /* anchors the win/game-over overlay */
   width: var(--board-width);
   padding: var(--gap);
   background: var(--board-bg);

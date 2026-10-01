@@ -1,0 +1,42 @@
+.app {
+  display: grid;
+  gap: 1rem;
+  width: var(--board-width);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.app-title {
+  margin: 0;
+  font-size: clamp(2rem, 10vw, 3.5rem);
+  line-height: 1;
+}
+
+.scores {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.app-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tagline {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* Temporary: removed when keyboard and swipe input arrive in Phase 3. */
+.dev-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}

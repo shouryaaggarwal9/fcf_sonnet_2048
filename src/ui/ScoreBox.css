@@ -1,0 +1,23 @@
+.score-box {
+  display: grid;
+  justify-items: center;
+  min-width: 4.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+}
+
+.score-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.score-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
