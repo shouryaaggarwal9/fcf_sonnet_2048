@@ -1,11 +1,9 @@
-import { useMemo } from 'react';
 import './App.css';
 import type { Direction } from './engine';
 import { useGameStore } from './state/gameStore';
 import { Board } from './ui/Board';
 import { GameOverlay } from './ui/GameOverlay';
 import { ScoreBox } from './ui/ScoreBox';
-import { boardToTiles } from './ui/tiles';
 import { useKeyboard } from './ui/useKeyboard';
 import { useSwipe } from './ui/useSwipe';
 
@@ -21,7 +19,7 @@ export default function App() {
 
   const swipe = useSwipe(move);
 
-  const tiles = useMemo(() => boardToTiles(game.board), [game.board]);
+  const tiles = useGameStore((state) => state.tracker.tiles);
 
   return (
     <main className="app">

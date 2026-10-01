@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import { type TileView, tileTier } from './tiles';
+import type { TileView } from '../state/tileTracker';
+import { tileTier } from './tiles';
 
 export function Tile({ value, row, col }: TileView) {
   return (

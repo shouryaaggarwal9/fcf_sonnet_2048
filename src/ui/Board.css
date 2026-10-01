@@ -45,6 +45,7 @@
     calc(var(--col) * (100% + var(--gap))),
     calc(var(--row) * (100% + var(--gap)))
   );
+  transition: transform var(--slide-ms) var(--slide-ease);
   display: grid;
   place-items: center;
   container-type: size; /* lets the number scale with the tile via cqw units */
@@ -133,5 +134,12 @@
   .tile[data-tier="2"] {
     --tile-bg: #5a5145;
     --tile-fg: #f0e8dc;
+  }
+}
+
+/* Reduced motion: tiles jump to their cells. Spawn and merge fades arrive in a later step. */
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: none;
   }
 }
