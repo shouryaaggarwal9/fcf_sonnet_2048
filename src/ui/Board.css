@@ -46,14 +46,19 @@
     calc(var(--row) * (100% + var(--gap)))
   );
   transition: transform var(--slide-ms) var(--slide-ease);
+  container-type: size; /* lets the number scale with the tile via cqw units */
+  user-select: none;
+}
+
+.tile-inner {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  container-type: size; /* lets the number scale with the tile via cqw units */
   border-radius: var(--gap);
   background: var(--tile-bg);
   color: var(--tile-fg);
   font-weight: 700;
-  user-select: none;
 }
 
 .tile-value {
@@ -137,9 +142,98 @@
   }
 }
 
-/* Reduced motion: tiles jump to their cells. Spawn and merge fades arrive in a later step. */
+/* ---------- Motion ---------- */
+
+/* Spawn: grows in with a fade. Quiet, because nothing happened to existing tiles. */
+@keyframes tile-spawn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/*
+ * Merge pop. Hidden at first (the delay phase uses the 0% frame), then it appears at full
+ * size, swells quickly to an impact, and settles. The 0% to 1% step is the hand-off
+ * from the ghosts, which vanish at the same instant.
+ */
+@keyframes tile-merge {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  1% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  40% {
+    transform: scale(1.15);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes tile-ghost-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes tile-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Delays use --slide-ms, the same value as the slide transition, so effects begin exactly
+ * when tiles land. "backwards" keeps a tile invisible while it waits for its delay.
+ * Shorthand order: name, duration, easing, delay, fill-mode.
+ */
+.tile[data-birth="spawn"] .tile-inner {
+  animation: tile-spawn var(--spawn-ms) var(--slide-ease) var(--slide-ms) backwards;
+}
+
+.tile[data-birth="fresh"] .tile-inner {
+  animation: tile-spawn var(--spawn-ms) var(--slide-ease) backwards;
+}
+
+.tile[data-birth="merge"] {
+  z-index: 1; /* above the ghost partners it replaces */
+}
+
+.tile[data-birth="merge"] .tile-inner {
+  animation: tile-merge var(--pop-ms) linear var(--slide-ms) backwards;
+}
+
+/* Merge partners: they slide into the merge cell, then disappear the instant they land. */
+.tile[data-ghost="true"] .tile-inner {
+  animation: tile-ghost-out 1ms linear var(--slide-ms) forwards;
+}
+
+/* Reduced motion: no sliding, scaling, or delays. Appearing tiles fade in, ghosts crossfade out. */
 @media (prefers-reduced-motion: reduce) {
   .tile {
     transition: none;
+  }
+
+  .tile[data-birth="spawn"] .tile-inner,
+  .tile[data-birth="fresh"] .tile-inner,
+  .tile[data-birth="merge"] .tile-inner {
+    animation: tile-fade 120ms linear backwards;
+  }
+
+  .tile[data-ghost="true"] .tile-inner {
+    animation: tile-ghost-out 120ms linear forwards;
   }
 }

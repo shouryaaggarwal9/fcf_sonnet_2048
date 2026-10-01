@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import './App.css';
 import type { Direction } from './engine';
 import { useGameStore } from './state/gameStore';
+import { drawOrder } from './state/tileTracker';
 import { Board } from './ui/Board';
 import { GameOverlay } from './ui/GameOverlay';
 import { ScoreBox } from './ui/ScoreBox';
@@ -19,7 +21,10 @@ export default function App() {
 
   const swipe = useSwipe(move);
 
-  const tiles = useGameStore((state) => state.tracker.tiles);
+  const tracker = useGameStore((state) => state.tracker);
+  const tiles = useMemo(() => drawOrder(tracker), [tracker]);
+
+  // const tiles = useGameStore((state) => state.tracker.tiles);
 
   return (
     <main className="app">

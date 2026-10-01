@@ -1,11 +1,28 @@
 import type { Board, Tile, TileMove } from '../engine';
 
+/** How a tile came to exist. Fixed for its whole life, so its entrance plays exactly once. */
+export type Birth =
+  /** Present on page load or after a rebuild: no animation. */
+  | 'initial'
+  /** Part of a new game: spawn animation, no delay. */
+  | 'fresh'
+  /** Spawned after a move: spawn animation, delayed until the slide ends. */
+  | 'spawn'
+  /** Created by a merge: pop, delayed until the slide ends. */
+  | 'merge';
+
 /** What the UI needs to draw one tile. `id` is what React uses to track it between renders. */
 export interface TileView {
   id: number;
   value: number;
   row: number;
   col: number;
+  birth: Birth;
+}
+
+/** A tile as drawn: live tiles plus ghosts (merge partners still finishing their slide). */
+export interface DrawnTile extends TileView {
+  ghost: boolean;
 }
 
 export interface TrackerState {
@@ -23,12 +40,12 @@ export interface TrackerState {
 const cellKey = (row: number, col: number) => `${row},${col}`;
 
 /** Builds a tracker from a plain board, giving ids in row-major order. */
-export function createTracker(board: Board, nextId = 1): TrackerState {
+export function createTracker(board: Board, nextId = 1, birth: Birth = 'initial'): TrackerState {
   const tiles: TileView[] = [];
   let id = nextId;
   for (const [row, values] of board.entries()) {
     for (const [col, value] of values.entries()) {
-      if (value !== 0) tiles.push({ id: id++, value, row, col });
+      if (value !== 0) tiles.push({ id: id++, value, row, col, birth });
     }
   }
   return { tiles, ghosts: [], nextId: id };
@@ -91,14 +108,30 @@ export function advanceTracker(
   // New tiles are appended in a fixed order, so the list stays sorted by id.
   let nextId = prev.nextId;
   const merged = [...mergedCells.values()].sort((a, b) => a.row - b.row || a.col - b.col);
-  for (const cell of merged) tiles.push({ id: nextId++, ...cell });
-  if (spawned)
+  for (const cell of merged) tiles.push({ id: nextId++, ...cell, birth: 'merge' });
+  if (spawned) {
     tiles.push({
       id: nextId++,
       value: spawned.value,
       row: spawned.row,
       col: spawned.col,
+      birth: 'spawn',
     });
+  }
 
   return { tiles, ghosts, nextId };
+}
+
+/**
+ * Every tile that should be in the DOM, in ascending id order.
+ *
+ * The order matters: browsers cancel a running CSS transition when a node is moved in the DOM.
+ * Survivors and ghosts keep their ids, and new tiles have the highest ids, so React only ever
+ * appends. Nodes are never reordered.
+ */
+export function drawOrder(tracker: TrackerState): DrawnTile[] {
+  return [
+    ...tracker.tiles.map((tile) => ({ ...tile, ghost: false })),
+    ...tracker.ghosts.map((tile) => ({ ...tile, ghost: true })),
+  ].sort((a, b) => a.id - b.id);
 }

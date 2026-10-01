@@ -66,7 +66,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     // nextId carries over, so ids stay unique across games and old nodes can't be reused.
     set({
       game,
-      tracker: createTracker(game.board, get().tracker.nextId),
+      tracker: createTracker(game.board, get().tracker.nextId, 'fresh'),
       lastTurn: null,
     });
   },

@@ -1,12 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react';
-import type { TileView } from '../state/tileTracker';
+import type { DrawnTile } from '../state/tileTracker';
 import { Tile } from './Tile';
 import './Board.css';
 import { motionVars } from './motion';
 
 interface BoardProps {
   size: number;
-  tiles: readonly TileView[];
+  tiles: readonly DrawnTile[];
   children?: ReactNode;
 }
 
