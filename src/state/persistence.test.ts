@@ -53,7 +53,7 @@ describe('saveTo and loadSaved', () => {
     const data = {
       game: newGame(42),
       best: { 4: 1234 },
-      settings: { theme: 'dark' as const },
+      settings: { theme: 'dark' as const, dpad: false },
       history: [],
       undos: 0,
     };
@@ -65,7 +65,7 @@ describe('saveTo and loadSaved', () => {
     saveTo(storage, {
       game: newGame(1),
       best: {},
-      settings: { theme: 'system' },
+      settings: { theme: 'system', dpad: false },
       history: [],
       undos: 0,
     });
@@ -95,7 +95,7 @@ describe('saveTo and loadSaved', () => {
     const data = {
       game: newGame(1),
       best: {},
-      settings: { theme: 'system' as const },
+      settings: { theme: 'system' as const, dpad: false },
       history: [],
       undos: 0,
     };
@@ -110,7 +110,7 @@ describe('saveTo and loadSaved', () => {
     const data = {
       game: newGame(1),
       best: {},
-      settings: { theme: 'system' as const },
+      settings: { theme: 'system' as const, dpad: false },
       history: [],
       undos: 0,
     };
@@ -162,7 +162,7 @@ describe('restore', () => {
     saveTo(storage, {
       game: saved,
       best: { 4: 500 },
-      settings: { theme: 'light' },
+      settings: { theme: 'light', dpad: false },
       history: [],
       undos: 0,
     });
@@ -170,7 +170,7 @@ describe('restore', () => {
     const result = restore(storage, 999);
     expect(result.game).toEqual(saved);
     expect(result.best).toEqual({ 4: 500 });
-    expect(result.settings).toEqual({ theme: 'light' });
+    expect(result.settings).toEqual({ theme: 'light', dpad: false });
   });
 
   it('continues identically to the original after a save and restore', () => {
@@ -179,7 +179,7 @@ describe('restore', () => {
     saveTo(storage, {
       game: original,
       best: {},
-      settings: { theme: 'system' },
+      settings: { theme: 'system', dpad: false },
       history: [],
       undos: 0,
     });
@@ -211,7 +211,7 @@ describe('restore', () => {
     saveTo(storage, {
       game: three,
       best: { 3: 10 },
-      settings: { theme: 'system' },
+      settings: { theme: 'system', dpad: false },
       history: [],
       undos: 0,
     });

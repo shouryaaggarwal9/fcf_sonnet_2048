@@ -7,7 +7,7 @@ import type { Board, GameState, GameStatus, Row } from '../engine';
  * Nothing here touches storage or the DOM: `persistence.ts` does that.
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** Board sizes the engine is intended for. Wider or narrower is treated as corrupt. */
 export const MIN_BOARD_SIZE = 3;
@@ -86,6 +86,12 @@ const THEMES: readonly ThemePreference[] = ['system', 'light', 'dark'];
 
 export interface Settings {
   theme: ThemePreference;
+  /**
+   * Show the on-screen direction pad. Off by default: swipe and the keyboard already cover
+   * input. This exists for WCAG 2.5.1, which asks for a single-pointer alternative to a
+   * path-based gesture like a swipe.
+   */
+  dpad: boolean;
 }
 
 /** Best score per board size, so a 3x3 record never inflates a 4x4 one. */
@@ -104,7 +110,7 @@ export interface SavedData {
   undos: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system' };
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', dpad: false };
 
 function parseBest(value: unknown): BestScores {
   if (!isPlainObject(value)) return {};
@@ -121,9 +127,12 @@ function parseBest(value: unknown): BestScores {
 
 function parseSettings(value: unknown): Settings {
   if (!isPlainObject(value)) return DEFAULT_SETTINGS;
-  return THEMES.includes(value.theme as ThemePreference)
-    ? { theme: value.theme as ThemePreference }
-    : DEFAULT_SETTINGS;
+  // Each field falls back on its own, so a partially valid object still keeps what it can.
+  const theme = THEMES.includes(value.theme as ThemePreference)
+    ? (value.theme as ThemePreference)
+    : DEFAULT_SETTINGS.theme;
+  // Anything that is not literally true is off. A tampered "yes" must not turn it on.
+  return { theme, dpad: value.dpad === true };
 }
 
 /**
@@ -171,11 +180,18 @@ export function migrate(raw: unknown): SavedData | null {
 
   if (raw.version === SCHEMA_VERSION) return parseSavedData(raw.data);
 
+  // v1 had no undo history, so there is nothing to restore from it.
   if (raw.version === 1) {
     const parsed = parseSavedData(raw.data);
     if (!parsed) return null;
-    // v1 saved no history, so there is nothing to undo after an upgrade.
     return { ...parsed, history: [], undos: 0 };
+  }
+
+  // v2 had no on-screen d-pad setting, so it starts hidden.
+  if (raw.version === 2) {
+    const parsed = parseSavedData(raw.data);
+    if (!parsed) return null;
+    return { ...parsed, settings: { ...parsed.settings, dpad: false } };
   }
 
   // A newer version is unreadable by design.

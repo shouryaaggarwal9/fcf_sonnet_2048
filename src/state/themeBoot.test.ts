@@ -85,9 +85,25 @@ describe('theme boot script', () => {
     expect(board).toContain('--tile-2-bg');
   });
 
-  it('declares both theme-colour metas so the browser chrome matches', () => {
+  it('defines both theme-colour metas so the browser chrome matches', () => {
     expect(html).toContain('name="theme-color"');
     expect(html).toContain('(prefers-color-scheme: light)');
     expect(html).toContain('(prefers-color-scheme: dark)');
+  });
+});
+
+describe('the temporary dev controls are gone', () => {
+  // Phase 3 scaffolding that Phase 5.5 removed. Left behind as dead CSS it would look like
+  // the buttons might still exist somewhere.
+  const appCss = read('src/App.css');
+  const appTsx = read('src/App.tsx');
+
+  it('has no .dev-controls rule in the stylesheet', () => {
+    expect(appCss).not.toContain('dev-controls');
+  });
+
+  it('renders no dev control markup', () => {
+    expect(appTsx).not.toContain('dev-controls');
+    expect(appTsx).not.toContain('className="dev-controls"');
   });
 });

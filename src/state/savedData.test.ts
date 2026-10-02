@@ -146,14 +146,14 @@ describe('parseSavedData', () => {
     const parsed = parseSavedData({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark' },
+      settings: { theme: 'dark', dpad: false },
       history: [],
       undos: 0,
     });
     expect(parsed).toEqual({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark' },
+      settings: { theme: 'dark', dpad: false },
       history: [],
       undos: 0,
     });
@@ -181,7 +181,7 @@ describe('parseSavedData', () => {
     const parsed = parseSavedData({
       game: game(),
       best: { 2: 500, 4: 900, 12: 100, 5: -1, 6: 'x', 7: MAX_PLAUSIBLE_SCORE + 1 },
-      settings: { theme: 'light' },
+      settings: { theme: 'light', dpad: false },
       history: [],
       undos: 0,
     });
@@ -205,7 +205,7 @@ describe('migrate', () => {
   const data = {
     game: game(),
     best: { 4: 100 },
-    settings: { theme: 'system' },
+    settings: { theme: 'system', dpad: false },
     history: [],
     undos: 0,
   };
@@ -252,12 +252,12 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark' },
+      settings: { theme: 'dark', dpad: false },
     });
     expect(parsed).toEqual({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark' },
+      settings: { theme: 'dark', dpad: false },
       history: [],
       undos: 0,
     });
@@ -269,7 +269,7 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: second,
       best: {},
-      settings: { theme: 'system' },
+      settings: { theme: 'system', dpad: false },
       history: [first, second],
       undos: 3,
     });
@@ -282,7 +282,7 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: game(),
       best: {},
-      settings: { theme: 'system' },
+      settings: { theme: 'system', dpad: false },
       history: [good, { board: 'tampered' }, null],
       undos: 0,
     });
@@ -290,7 +290,11 @@ describe('best scores', () => {
   });
 
   it('defaults history and undos when absent, as a v1 payload has neither', () => {
-    const parsed = parseSavedData({ game: game(), best: {}, settings: { theme: 'system' } });
+    const parsed = parseSavedData({
+      game: game(),
+      best: {},
+      settings: { theme: 'system', dpad: false },
+    });
     expect(parsed?.history).toEqual([]);
     expect(parsed?.undos).toBe(0);
   });
@@ -299,7 +303,7 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: game(),
       best: {},
-      settings: { theme: 'system' },
+      settings: { theme: 'system', dpad: false },
       history: [],
       undos: -1,
     });
@@ -310,15 +314,70 @@ describe('best scores', () => {
     const original = game();
     const upgraded = migrate({
       version: 1,
-      data: { game: original, best: { 4: 700 }, settings: { theme: 'dark' } },
+      data: { game: original, best: { 4: 700 }, settings: { theme: 'dark', dpad: false } },
     });
     expect(upgraded).toEqual({
       game: original,
       best: { 4: 700 },
-      settings: { theme: 'dark' },
+      settings: { theme: 'dark', dpad: false },
       history: [],
       undos: 0,
     });
+  });
+
+  it('upgrades a v2 payload, keeping everything but starting with the pad hidden', () => {
+    const original = game();
+    const upgraded = migrate({
+      version: 2,
+      data: {
+        game: original,
+        best: { 4: 700 },
+        settings: { theme: 'dark' },
+        history: [original],
+        undos: 2,
+      },
+    });
+    expect(upgraded).toEqual({
+      game: original,
+      best: { 4: 700 },
+      settings: { theme: 'dark', dpad: false },
+      history: [original],
+      undos: 2,
+    });
+  });
+
+  it('upgrades a v1 payload all the way, with no history and no pad', () => {
+    const original = game();
+    const upgraded = migrate({
+      version: 1,
+      data: { game: original, best: {}, settings: { theme: 'light' } },
+    });
+    expect(upgraded?.history).toEqual([]);
+    expect(upgraded?.undos).toBe(0);
+    expect(upgraded?.settings).toEqual({ theme: 'light', dpad: false });
+  });
+
+  it('only turns the pad on for a literal true, so a tampered value cannot enable it', () => {
+    for (const dpad of ['true', 1, 'yes', null, {}]) {
+      const parsed = parseSavedData({
+        game: game(),
+        best: {},
+        settings: { theme: 'system', dpad },
+      });
+      expect(parsed?.settings.dpad, String(dpad)).toBe(false);
+    }
+    expect(
+      parseSavedData({ game: game(), best: {}, settings: { theme: 'system', dpad: true } })
+        ?.settings.dpad,
+    ).toBe(true);
+  });
+
+  it('keeps a valid theme even when the pad field is missing, and vice versa', () => {
+    const noPad = parseSavedData({ game: game(), best: {}, settings: { theme: 'dark' } });
+    expect(noPad?.settings).toEqual({ theme: 'dark', dpad: false });
+
+    const noTheme = parseSavedData({ game: game(), best: {}, settings: { dpad: true } });
+    expect(noTheme?.settings).toEqual({ theme: 'system', dpad: true });
   });
 
   it('never decreases', () => {

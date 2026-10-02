@@ -60,8 +60,10 @@ interface GameStore {
   undo: () => boolean;
   /** Dismisses the win screen. */
   keepPlaying: () => void;
-  /** Saves a preference. Only `theme` exists so far. */
+  /** Saves a preference. */
   setTheme: (theme: ThemePreference) => void;
+  /** Shows or hides the on-screen direction pad. */
+  setDpad: (enabled: boolean) => void;
   /** Starts a new game. Pass a seed for a reproducible game, or omit it for a random one. */
   restart: (seed?: number) => void;
   /**
@@ -181,7 +183,12 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
   setTheme: (theme) => {
     if (get().settings.theme === theme) return; // no state change, so no re-render
-    set({ settings: { theme } });
+    set({ settings: { ...get().settings, theme } });
+  },
+
+  setDpad: (enabled) => {
+    if (get().settings.dpad === enabled) return;
+    set({ settings: { ...get().settings, dpad: enabled } });
   },
 
   restart: (seed = randomSeed()) => {

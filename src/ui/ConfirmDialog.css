@@ -1,0 +1,36 @@
+/*
+ * The native dialog supplies the top layer, the backdrop, and the focus trap. Only the skin
+ * lives here. Width is capped because a native dialog sizes to its content and an uncapped
+ * dialog on a narrow phone would push its buttons off screen.
+ */
+.confirm {
+  max-width: min(90vw, 22rem);
+  padding: 1.25rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--page-bg);
+  color: var(--text);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 0.35);
+}
+
+.confirm::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.confirm-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.confirm-body {
+  margin: 0 0 1.1rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

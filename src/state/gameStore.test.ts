@@ -192,12 +192,12 @@ describe('mergeBest', () => {
 
 describe('settings', () => {
   it('starts following the system theme', () => {
-    useGameStore.setState({ settings: { theme: 'system' } });
+    useGameStore.setState({ settings: { theme: 'system', dpad: false } });
     expect(store().settings.theme).toBe('system');
   });
 
   it('stores an explicit theme choice', () => {
-    useGameStore.setState({ settings: { theme: 'system' } });
+    useGameStore.setState({ settings: { theme: 'system', dpad: false } });
     store().setTheme('dark');
     expect(store().settings.theme).toBe('dark');
     store().setTheme('light');
@@ -205,14 +205,14 @@ describe('settings', () => {
   });
 
   it('does not change state when the theme is already what was asked for', () => {
-    useGameStore.setState({ settings: { theme: 'dark' } });
+    useGameStore.setState({ settings: { theme: 'dark', dpad: false } });
     const before = store().settings;
     store().setTheme('dark');
     expect(store().settings).toBe(before);
   });
 
   it('keeps the theme across a new game', () => {
-    useGameStore.setState({ settings: { theme: 'dark' } });
+    useGameStore.setState({ settings: { theme: 'dark', dpad: false } });
     store().restart(3);
     expect(store().settings.theme).toBe('dark');
   });
@@ -223,13 +223,46 @@ describe('settings', () => {
     store().setTheme('dark');
     expect(store().game).toBe(before);
   });
+
+  it('toggles the on-screen pad, which starts hidden', () => {
+    useGameStore.setState({ settings: { theme: 'system', dpad: false } });
+    expect(store().settings.dpad).toBe(false);
+    store().setDpad(true);
+    expect(store().settings.dpad).toBe(true);
+  });
+
+  it('does not change state when the pad is already in the requested position', () => {
+    useGameStore.setState({ settings: { theme: 'system', dpad: true } });
+    const before = store().settings;
+    store().setDpad(true);
+    expect(store().settings).toBe(before);
+  });
+
+  it('keeps the theme when the pad is toggled, and the pad when the theme changes', () => {
+    useGameStore.setState({ settings: { theme: 'dark', dpad: false } });
+    store().setDpad(true);
+    expect(store().settings).toEqual({ theme: 'dark', dpad: true });
+    store().setTheme('light');
+    expect(store().settings).toEqual({ theme: 'light', dpad: true });
+  });
+
+  it('keeps the pad choice across a new game', () => {
+    useGameStore.setState({ settings: { theme: 'system', dpad: true } });
+    store().restart(2);
+    expect(store().settings.dpad).toBe(true);
+  });
 });
 
 describe('adopt', () => {
   it('replaces game and tracker together, and rebuilds without animating', () => {
     useGameStore.setState({ best: {} });
     const restored = { ...newGame(9), score: 400, moves: 12 };
-    store().adopt({ game: restored, best: { 4: 400 }, settings: { theme: 'system' }, history: [] });
+    store().adopt({
+      game: restored,
+      best: { 4: 400 },
+      settings: { theme: 'system', dpad: false },
+      history: [],
+    });
 
     expect(store().game).toEqual(restored);
     expect(matchesBoard(store().tracker.tiles, restored.board)).toBe(true);
@@ -243,7 +276,7 @@ describe('adopt', () => {
     store().adopt({
       game: newGame(3),
       best: {},
-      settings: { theme: 'system' },
+      settings: { theme: 'system', dpad: false },
       history: [],
     });
     expect(store().tracker.tiles.every((t) => t.id >= highest)).toBe(true);

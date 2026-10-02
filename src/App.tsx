@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import type { Direction } from './engine';
 import { startPersistence, startStorageSync, useGameStore } from './state/gameStore';
+import { restartWarning, shouldConfirmRestart } from './state/restart';
 import { bestFor } from './state/savedData';
 import { drawOrder } from './state/tileTracker';
 import { Board } from './ui/Board';
+import { ConfirmDialog } from './ui/ConfirmDialog';
+import { Dpad } from './ui/Dpad';
 import { GameOverlay } from './ui/GameOverlay';
 import { gameInput } from './ui/gameInput';
 import { motionVars } from './ui/motion';
@@ -16,13 +19,13 @@ import { useSwipe } from './ui/useSwipe';
 import { useTheme } from './ui/useTheme';
 import { useUndo } from './ui/useUndo';
 
-const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
-
 export default function App() {
   const game = useGameStore((state) => state.game);
   const tracker = useGameStore((state) => state.tracker);
   const lastTurn = useGameStore((state) => state.lastTurn);
   const best = useGameStore((state) => state.best);
+  const settings = useGameStore((state) => state.settings);
+  const setDpad = useGameStore((state) => state.setDpad);
   const canUndo = useGameStore((state) => state.history.length > 0);
   const boardEpoch = useGameStore((state) => state.boardEpoch);
   const keepPlaying = useGameStore((state) => state.keepPlaying);
@@ -34,17 +37,46 @@ export default function App() {
   useEffect(() => startStorageSync(), []);
 
   const undo = useUndo();
-  useKeyboard({ onMove: gameInput.input, onUndo: undo });
-  const swipe = useSwipe(gameInput.input);
   const theme = useTheme();
-
+  const swipe = useSwipe(gameInput.input);
   const tiles = useMemo(() => drawOrder(tracker), [tracker]);
   const bestScore = bestFor(best, game.board.length);
+
+  /**
+   * Whether the restart confirmation is showing. A ref as well as state, because the key and
+   * pointer handlers read it on every event and a stale closure would let a move through
+   * while the dialog is open.
+   */
+  const [confirming, setConfirming] = useState(false);
+  const confirmingRef = useRef(false);
+  confirmingRef.current = confirming;
 
   const handleRestart = useCallback(() => {
     gameInput.reset(); // drop any queued moves from the old game
     restart();
   }, [restart]);
+
+  const requestRestart = useCallback(() => {
+    if (shouldConfirmRestart(game)) {
+      setConfirming(true);
+      return;
+    }
+    handleRestart();
+  }, [game, handleRestart]);
+
+  const closeConfirm = useCallback(() => setConfirming(false), []);
+
+  // While the dialog is open, the page behind it is inert to pointer events, but our input
+  // listeners sit on the window and would still fire. Gate them explicitly.
+  const moveOrUndo = useCallback((action: () => void) => {
+    if (confirmingRef.current) return;
+    action();
+  }, []);
+
+  useKeyboard({
+    onMove: (direction: Direction) => moveOrUndo(() => gameInput.input(direction)),
+    onUndo: () => moveOrUndo(undo),
+  });
 
   return (
     // motionVars is set here as well as on the board, so the Score box animations get the
@@ -96,7 +128,25 @@ export default function App() {
               />
             </svg>
           </button>
-          <button type="button" className="btn" onClick={handleRestart}>
+          <button
+            type="button"
+            className="btn btn-icon"
+            onClick={() => setDpad(!settings.dpad)}
+            aria-pressed={settings.dpad}
+            aria-label={settings.dpad ? 'Hide direction pad' : 'Show direction pad'}
+          >
+            {/* A four-way cross, matching the pad it toggles. */}
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M12 4v16M4 12h16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+          <button type="button" className="btn" onClick={requestRestart}>
             New game
           </button>
         </div>
@@ -113,18 +163,19 @@ export default function App() {
         </Board>
       </div>
 
-      <div className="dev-controls">
-        {DIRECTIONS.map((direction) => (
-          <button
-            key={direction}
-            type="button"
-            className="btn"
-            onClick={() => gameInput.input(direction)}
-          >
-            {direction}
-          </button>
-        ))}
-      </div>
+      {settings.dpad && (
+        <Dpad onMove={(direction) => moveOrUndo(() => gameInput.input(direction))} />
+      )}
+
+      <ConfirmDialog
+        open={confirming}
+        message={restartWarning(game)}
+        onConfirm={() => {
+          setConfirming(false);
+          handleRestart();
+        }}
+        onCancel={closeConfirm}
+      />
     </main>
   );
 }

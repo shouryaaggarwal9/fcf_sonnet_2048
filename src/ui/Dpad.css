@@ -1,0 +1,53 @@
+/*
+ * A four-way pad laid out as a cross. The buttons are absolutely positioned in a fixed square
+ * so the shape is obvious, and each is at least 44px so it is comfortable on a phone.
+ *
+ * A fieldset brings its own border, padding and margin, all of which are removed here: the
+ * only thing it contributes is the grouping semantics and the legend.
+ */
+.dpad {
+  position: relative;
+  width: 9.75rem;
+  height: 9.75rem;
+  margin: 0.75rem auto 0;
+  padding: 0;
+  border: 0;
+}
+
+.dpad-btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1;
+  touch-action: manipulation; /* a tap here must not wait to see if it becomes a double-tap */
+}
+
+.dpad-up {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.dpad-left {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.dpad-right {
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.dpad-down {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}

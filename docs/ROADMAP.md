@@ -226,14 +226,41 @@ Notes, and what the audit actually found:
 - [ ] "New game" on a game in progress (`moves > 0` and status `playing`) asks for confirmation
       through an accessible modal (`<dialog>` with focus trapping and Escape handling). No confirm on
       fresh or over states. Make the confirm copy mention that undo is not available after restart.
-- [ ] Both restart paths call `gameInput.reset()` first (already true in `handleRestart`. Keep it).
+- [x] Both restart paths call `gameInput.reset()` first (already true in `handleRestart`. Keep it).
 
 ### 5.5 Remove the dev controls (and replace them properly)
 
-- [ ] Delete the temporary direction buttons and `.dev-controls`.
-- [ ] **WCAG 2.5.1 (pointer gestures):** swipe is a path-based gesture, so offer a single-tap alternative.
+- [x] Delete the temporary direction buttons and `.dev-controls`.
+- [x] **WCAG 2.5.1 (pointer gestures):** swipe is a path-based gesture, so offer a single-tap alternative.
       Add an optional on-screen D-pad, toggled in settings and off by default, wired through `gameInput`.
       Keyboard users are already served.
+
+Notes for 5.4 and 5.5:
+
+- **The confirmation uses the native `<dialog>`**, not a hand-rolled modal. The platform already
+  provides the top layer, the focus trap, inerting the page behind it, Escape, and focus
+  restoration. `showModal()` is called imperatively, because React's `open` prop yields a plain
+  dialog with none of that. Verified in the browser: focus lands on "Keep playing" (the safe
+  choice), Escape closes without losing the game, and the copy names the move count and says
+  undo cannot bring it back.
+- **Confirm is asked only when there is progress to lose** (`moves > 0` and status `playing`), per
+  `shouldConfirmRestart`. A finished game has its own New game button on the overlay, and
+  confirming there too would mean two dialogs to start the next game.
+- **Input is gated while the dialog is open.** The page behind a modal is inert to pointer events,
+  but the key listeners sit on `window` and would still fire, so a move could land behind the
+  dialog. `App` checks a ref, not the state value, so a handler cannot read a stale closure.
+- **The D-pad goes through `gameInput`, not the store**, so a tap obeys the same move lock and
+  queue as a key press. Mashing the pad behaves exactly like mashing the arrow keys.
+- **The D-pad is a `<fieldset>` with a visually hidden `<legend>`**, not `role="group"`, which is
+  what Biome's `useSemanticElements` asks for and is genuinely the right element for a control
+  group. There is no `autoFocus` prop on the dialog's first button: `showModal()` already focuses
+  the first focusable element, landing on the safe choice without asking React to do it.
+- **Schema is now v3.** v2 had no `dpad` setting, so `migrate()` starts it hidden, and
+  `settings.dpad` only accepts a literal `true` so a tampered value cannot switch the pad on.
+- Verified in the browser: dev controls gone, pad hidden by default and persisted when enabled,
+  smallest pad button 52px, pad taps play moves, restart clears history so undo disables.
+- The pad toggle lives in the action row rather than a settings dialog, because the settings
+  dialog is Phase 6. When that arrives the toggle should move into it and the icon button go.
 
 ---
 
