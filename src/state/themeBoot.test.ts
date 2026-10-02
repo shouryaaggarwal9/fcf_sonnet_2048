@@ -74,8 +74,24 @@ describe('theme boot script', () => {
     expect(cssRules('src/ui/Board.css')).not.toMatch(/prefers-color-scheme/);
   });
 
-  it('still allows prefers-reduced-motion, so the rule above has not over-reached', () => {
-    expect(cssRules('src/ui/Board.css')).toContain('prefers-reduced-motion');
+  it('drives reduced motion from data-motion, not a media query', () => {
+    // Phase 6 moved motion to an attribute because a media query cannot see an in-app
+    // override: honouring a player's choice would have meant duplicating every reduced-motion
+    // block under a second selector. The OS preference is still read, in the boot script.
+    const board = cssRules('src/ui/Board.css');
+    expect(board).not.toContain('prefers-reduced-motion');
+    expect(board).toContain(':root[data-motion="reduce"]');
+  });
+
+  it('gives every animated surface a reduced variant', () => {
+    for (const file of ['src/ui/Board.css', 'src/ui/GameOverlay.css', 'src/ui/ScoreBox.css']) {
+      expect(cssRules(file), file).toContain(':root[data-motion="reduce"]');
+    }
+  });
+
+  it('sets data-motion in the boot script, so an override applies from the first paint', () => {
+    expect(script).toContain('data-motion');
+    expect(script).toContain('prefers-reduced-motion');
   });
 
   it('defines both tile-1 and tile-2 as variables, not duplicated selectors', () => {

@@ -83,7 +83,7 @@
 }
 
 /* Reduced motion: the number still acknowledges a change, but nothing moves. */
-@media (prefers-reduced-motion: reduce) {
+:root[data-motion="reduce"] {
   .score-value {
     animation: score-fade var(--fade-ms) linear;
   }

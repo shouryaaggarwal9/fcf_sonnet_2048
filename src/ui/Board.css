@@ -274,7 +274,7 @@
 }
 
 /* Reduced motion: no sliding, scaling, or delays. Appearing tiles fade in, ghosts crossfade out. */
-@media (prefers-reduced-motion: reduce) {
+:root[data-motion="reduce"] {
   .tile {
     transition: none;
   }

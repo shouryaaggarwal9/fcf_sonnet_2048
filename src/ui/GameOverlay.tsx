@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameStatus } from '../engine';
 import './GameOverlay.css';
 import { moveSettleMs } from './motion';
@@ -43,11 +43,47 @@ function useSettled(active: boolean, delayMs: number): boolean {
   return active && settled;
 }
 
+/**
+ * Moves focus to the overlay's primary button when it appears, and puts it back afterwards.
+ *
+ * Without this, focus stays wherever it was, which for a keyboard or screen reader player
+ * means the game-over dialog appears without being announced or reachable: tabbing carries on
+ * through the page behind it. Returning focus matters just as much, otherwise dismissing the
+ * overlay drops the player at the top of the document.
+ *
+ * Focus is only taken once the overlay is settled, so the button is not focused while it is
+ * still invisible behind the delay.
+ */
+function useOverlayFocus(active: boolean, primaryRef: React.RefObject<HTMLButtonElement | null>) {
+  const restoreTo = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!active) {
+      // Restoring on the way out is what keeps the player where they were.
+      const previous = restoreTo.current;
+      restoreTo.current = null;
+      if (previous && previous.isConnected) previous.focus();
+      return;
+    }
+    restoreTo.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }, [active]);
+
+  useEffect(() => {
+    if (active) primaryRef.current?.focus();
+  }, [active, primaryRef]);
+}
+
 export function GameOverlay({ status, score, onKeepPlaying, onRestart }: GameOverlayProps) {
   const reducedMotion = usePrefersReducedMotion();
   const delayMs = moveSettleMs(reducedMotion);
   const shown = status !== 'playing';
   const settled = useSettled(shown, delayMs);
+
+  // The primary action is "keep going" on a win, and "new game" otherwise: the thing the
+  // player most likely wants next.
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  useOverlayFocus(settled, primaryRef);
 
   if (!shown) return null;
   const won = status === 'won';
@@ -57,17 +93,34 @@ export function GameOverlay({ status, score, onKeepPlaying, onRestart }: GameOve
       className="overlay"
       data-kind={status}
       data-settled={settled ? 'true' : 'false'}
+      // A dialog, because it is a decision the player has to make, and `aria-modal` because
+      // the game is over: there is nothing behind it to interact with.
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="overlay-title"
       inert={!settled}
     >
-      <p className="overlay-title">{won ? 'You win!' : 'Game over'}</p>
+      <p className="overlay-title" id="overlay-title">
+        {won ? 'You win!' : 'Game over'}
+      </p>
       <p className="overlay-score">Score {score.toLocaleString()}</p>
       <div className="overlay-actions">
         {won && (
-          <button type="button" className="btn btn-primary" onClick={onKeepPlaying}>
+          <button
+            ref={primaryRef}
+            type="button"
+            className="btn btn-primary"
+            onClick={onKeepPlaying}
+          >
             Keep going
           </button>
         )}
-        <button type="button" className={won ? 'btn' : 'btn btn-primary'} onClick={onRestart}>
+        <button
+          ref={won ? undefined : primaryRef}
+          type="button"
+          className={won ? 'btn' : 'btn btn-primary'}
+          onClick={onRestart}
+        >
           New game
         </button>
       </div>

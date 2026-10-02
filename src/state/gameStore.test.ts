@@ -73,6 +73,10 @@ describe('game store', () => {
     expect(store().lastTurn).toEqual({
       gained: expected.gained,
       spawned: expected.spawned,
+      // A merge is worth announcing, so the store reports what this move created.
+      merged: [...new Set(expected.moves.filter((m) => m.merged).map((m) => m.value * 2))].sort(
+        (a, b) => a - b,
+      ),
     });
   });
 
@@ -192,12 +196,16 @@ describe('mergeBest', () => {
 
 describe('settings', () => {
   it('starts following the system theme', () => {
-    useGameStore.setState({ settings: { theme: 'system', dpad: false } });
+    useGameStore.setState({
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
+    });
     expect(store().settings.theme).toBe('system');
   });
 
   it('stores an explicit theme choice', () => {
-    useGameStore.setState({ settings: { theme: 'system', dpad: false } });
+    useGameStore.setState({
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
+    });
     store().setTheme('dark');
     expect(store().settings.theme).toBe('dark');
     store().setTheme('light');
@@ -205,14 +213,14 @@ describe('settings', () => {
   });
 
   it('does not change state when the theme is already what was asked for', () => {
-    useGameStore.setState({ settings: { theme: 'dark', dpad: false } });
+    useGameStore.setState({ settings: { theme: 'dark', dpad: false, motion: 'system' as const } });
     const before = store().settings;
     store().setTheme('dark');
     expect(store().settings).toBe(before);
   });
 
   it('keeps the theme across a new game', () => {
-    useGameStore.setState({ settings: { theme: 'dark', dpad: false } });
+    useGameStore.setState({ settings: { theme: 'dark', dpad: false, motion: 'system' as const } });
     store().restart(3);
     expect(store().settings.theme).toBe('dark');
   });
@@ -225,29 +233,31 @@ describe('settings', () => {
   });
 
   it('toggles the on-screen pad, which starts hidden', () => {
-    useGameStore.setState({ settings: { theme: 'system', dpad: false } });
+    useGameStore.setState({
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
+    });
     expect(store().settings.dpad).toBe(false);
     store().setDpad(true);
     expect(store().settings.dpad).toBe(true);
   });
 
   it('does not change state when the pad is already in the requested position', () => {
-    useGameStore.setState({ settings: { theme: 'system', dpad: true } });
+    useGameStore.setState({ settings: { theme: 'system', dpad: true, motion: 'system' as const } });
     const before = store().settings;
     store().setDpad(true);
     expect(store().settings).toBe(before);
   });
 
   it('keeps the theme when the pad is toggled, and the pad when the theme changes', () => {
-    useGameStore.setState({ settings: { theme: 'dark', dpad: false } });
+    useGameStore.setState({ settings: { theme: 'dark', dpad: false, motion: 'system' as const } });
     store().setDpad(true);
-    expect(store().settings).toEqual({ theme: 'dark', dpad: true });
+    expect(store().settings).toEqual({ theme: 'dark', dpad: true, motion: 'system' });
     store().setTheme('light');
-    expect(store().settings).toEqual({ theme: 'light', dpad: true });
+    expect(store().settings).toEqual({ theme: 'light', dpad: true, motion: 'system' });
   });
 
   it('keeps the pad choice across a new game', () => {
-    useGameStore.setState({ settings: { theme: 'system', dpad: true } });
+    useGameStore.setState({ settings: { theme: 'system', dpad: true, motion: 'system' as const } });
     store().restart(2);
     expect(store().settings.dpad).toBe(true);
   });
@@ -260,7 +270,7 @@ describe('adopt', () => {
     store().adopt({
       game: restored,
       best: { 4: 400 },
-      settings: { theme: 'system', dpad: false },
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
       history: [],
     });
 
@@ -276,7 +286,7 @@ describe('adopt', () => {
     store().adopt({
       game: newGame(3),
       best: {},
-      settings: { theme: 'system', dpad: false },
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
       history: [],
     });
     expect(store().tracker.tiles.every((t) => t.id >= highest)).toBe(true);
@@ -441,7 +451,51 @@ describe('undo', () => {
     expect(store().tracker.tiles.every((t) => t.id >= highestBefore)).toBe(true);
   });
 
-  it('clears the last turn, so no score popup appears for an undone move', () => {
+  it('reports no merges for a move that only slid and spawned', () => {
+    useGameStore.setState({ game: newGame(1), history: [] });
+    const direction = legalMove(store().game);
+    if (applyMove(store().game, direction).gained > 0) return; // this seed merged first
+    store().move(direction);
+    expect(store().lastTurn?.merged).toEqual([]);
+  });
+
+  it('reports the tiles a move created by merging, for announcements', () => {
+    // A single 64+64 merge creates one 128.
+    useGameStore.setState({
+      game: {
+        ...newGame(1),
+        board: [
+          [64, 64, 0, 0],
+          [0, 0, 0, 0],
+          [0, 0, 0, 0],
+          [0, 0, 0, 0],
+        ],
+      },
+      history: [],
+    });
+    store().move('left');
+    expect(store().lastTurn?.merged).toEqual([128]);
+  });
+
+  it('reports two merge values from one move that merges twice', () => {
+    useGameStore.setState({
+      game: {
+        ...newGame(1),
+        board: [
+          [2, 2, 2, 2],
+          [0, 0, 0, 0],
+          [0, 0, 0, 0],
+          [0, 0, 0, 0],
+        ],
+      },
+      history: [],
+    });
+    store().move('left');
+    // Two 4s were made from four 2s, deduplicated to one value.
+    expect(store().lastTurn?.merged).toEqual([4]);
+  });
+
+  it('reports the last turn cleared after undo', () => {
     store().move(legalMove(store().game));
     expect(store().lastTurn).not.toBeNull();
     store().undo();

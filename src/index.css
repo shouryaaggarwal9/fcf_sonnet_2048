@@ -66,7 +66,13 @@ body {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 1rem;
+  /*
+   * Safe-area insets, so a notched phone or standalone PWA does not tuck the board under a
+   * notch or a home indicator. env() resolves to 0px on devices with no cutout, so it is safe
+   * to use unconditionally.
+   */
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background: var(--page-bg);
   color: var(--text);
   /* No double-tap zoom on buttons and text. The board opts out of gestures entirely. */

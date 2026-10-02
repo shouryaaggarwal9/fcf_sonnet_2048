@@ -2,6 +2,33 @@
   display: grid;
   gap: 1rem;
   width: var(--board-width);
+  max-width: 100%;
+}
+
+/*
+ * Landscape on a phone is short, not narrow: the board is already limited by 60dvh, so what
+ * runs out is vertical room for the header, the action row, and the pad. Tightening the gaps
+ * and the header type is enough to keep everything on screen without scrolling.
+ */
+@media (orientation: landscape) and (max-height: 34rem) {
+  .app {
+    gap: 0.6rem;
+  }
+
+  .app-title {
+    font-size: clamp(1.5rem, 6vw, 2.25rem);
+  }
+
+  .dpad {
+    width: 8.25rem;
+    height: 8.25rem;
+    margin-top: 0.4rem;
+  }
+
+  .dpad-btn {
+    width: 2.9rem;
+    height: 2.9rem;
+  }
 }
 
 .app-header {

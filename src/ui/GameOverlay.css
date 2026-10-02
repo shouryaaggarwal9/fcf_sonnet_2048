@@ -67,7 +67,7 @@
  * Reduced motion: no scale, and no wait, since there is no slide to watch. A short fade
  * still means the board is not covered instantly.
  */
-@media (prefers-reduced-motion: reduce) {
+:root[data-motion="reduce"] {
   .overlay {
     animation: overlay-fade var(--fade-ms) linear var(--settle-ms-reduced) backwards;
   }

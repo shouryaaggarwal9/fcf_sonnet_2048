@@ -7,7 +7,7 @@ import type { Board, GameState, GameStatus, Row } from '../engine';
  * Nothing here touches storage or the DOM: `persistence.ts` does that.
  */
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** Board sizes the engine is intended for. Wider or narrower is treated as corrupt. */
 export const MIN_BOARD_SIZE = 3;
@@ -84,6 +84,10 @@ export type ThemePreference = 'system' | 'light' | 'dark';
 
 const THEMES: readonly ThemePreference[] = ['system', 'light', 'dark'];
 
+export type MotionPreference = 'system' | 'reduce' | 'full';
+
+const MOTIONS: readonly MotionPreference[] = ['system', 'reduce', 'full'];
+
 export interface Settings {
   theme: ThemePreference;
   /**
@@ -92,7 +96,14 @@ export interface Settings {
    * path-based gesture like a swipe.
    */
   dpad: boolean;
+  /**
+   * How much motion to use. 'system' follows the operating system, which is the default so an
+   * OS-level request for less motion is honoured without the player having to ask again.
+   */
+  motion: MotionPreference;
 }
+
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', dpad: false, motion: 'system' };
 
 /** Best score per board size, so a 3x3 record never inflates a 4x4 one. */
 export type BestScores = Readonly<Record<number, number>>;
@@ -109,8 +120,6 @@ export interface SavedData {
   /** How many undos have ever been used. Recorded for a future daily-challenge limit. */
   undos: number;
 }
-
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', dpad: false };
 
 function parseBest(value: unknown): BestScores {
   if (!isPlainObject(value)) return {};
@@ -132,7 +141,13 @@ function parseSettings(value: unknown): Settings {
     ? (value.theme as ThemePreference)
     : DEFAULT_SETTINGS.theme;
   // Anything that is not literally true is off. A tampered "yes" must not turn it on.
-  return { theme, dpad: value.dpad === true };
+  return {
+    theme,
+    dpad: value.dpad === true,
+    motion: MOTIONS.includes(value.motion as MotionPreference)
+      ? (value.motion as MotionPreference)
+      : DEFAULT_SETTINGS.motion,
+  };
 }
 
 /**
@@ -191,7 +206,20 @@ export function migrate(raw: unknown): SavedData | null {
   if (raw.version === 2) {
     const parsed = parseSavedData(raw.data);
     if (!parsed) return null;
-    return { ...parsed, settings: { ...parsed.settings, dpad: false } };
+    return {
+      ...parsed,
+      settings: { ...parsed.settings, dpad: false },
+    };
+  }
+
+  // v3 had no motion override, so it follows the system.
+  if (raw.version === 3) {
+    const parsed = parseSavedData(raw.data);
+    if (!parsed) return null;
+    return {
+      ...parsed,
+      settings: { ...parsed.settings, motion: DEFAULT_SETTINGS.motion },
+    };
   }
 
   // A newer version is unreadable by design.

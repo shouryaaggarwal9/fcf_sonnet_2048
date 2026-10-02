@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { BOARD_INSTRUCTIONS } from '../state/announcements';
 import type { DrawnTile } from '../state/tileTracker';
 import { Tile } from './Tile';
 import './Board.css';
@@ -53,7 +54,15 @@ export function Board({ size, tiles, epoch = 0, children }: BoardProps) {
   const drawn = outgoing === null ? tiles : outgoing;
 
   return (
-    <div className="board" style={{ '--size': size, ...motionVars } as CSSProperties}>
+    // role="img" with a label, because the board is a picture of numbers: a screen reader
+    // cannot usefully walk sixteen absolutely positioned tiles, and announcing each one would
+    // drown out everything that matters. The live region in App announces the changes instead.
+    <div
+      className="board"
+      role="img"
+      aria-label={`Game board, ${size} by ${size}. ${BOARD_INSTRUCTIONS}`}
+      style={{ '--size': size, ...motionVars } as CSSProperties}
+    >
       <div className="board-inner">
         <div className="board-grid" aria-hidden="true">
           {cellIds.map((id) => (

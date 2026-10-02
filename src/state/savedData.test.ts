@@ -146,14 +146,14 @@ describe('parseSavedData', () => {
     const parsed = parseSavedData({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark', dpad: false },
+      settings: { theme: 'dark', dpad: false, motion: 'system' as const },
       history: [],
       undos: 0,
     });
     expect(parsed).toEqual({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark', dpad: false },
+      settings: { theme: 'dark', dpad: false, motion: 'system' as const },
       history: [],
       undos: 0,
     });
@@ -181,7 +181,7 @@ describe('parseSavedData', () => {
     const parsed = parseSavedData({
       game: game(),
       best: { 2: 500, 4: 900, 12: 100, 5: -1, 6: 'x', 7: MAX_PLAUSIBLE_SCORE + 1 },
-      settings: { theme: 'light', dpad: false },
+      settings: { theme: 'light', dpad: false, motion: 'system' as const },
       history: [],
       undos: 0,
     });
@@ -205,7 +205,7 @@ describe('migrate', () => {
   const data = {
     game: game(),
     best: { 4: 100 },
-    settings: { theme: 'system', dpad: false },
+    settings: { theme: 'system', dpad: false, motion: 'system' as const },
     history: [],
     undos: 0,
   };
@@ -252,12 +252,12 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark', dpad: false },
+      settings: { theme: 'dark', dpad: false, motion: 'system' as const },
     });
     expect(parsed).toEqual({
       game: original,
       best: { 4: 900 },
-      settings: { theme: 'dark', dpad: false },
+      settings: { theme: 'dark', dpad: false, motion: 'system' as const },
       history: [],
       undos: 0,
     });
@@ -269,7 +269,7 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: second,
       best: {},
-      settings: { theme: 'system', dpad: false },
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
       history: [first, second],
       undos: 3,
     });
@@ -282,7 +282,7 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: game(),
       best: {},
-      settings: { theme: 'system', dpad: false },
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
       history: [good, { board: 'tampered' }, null],
       undos: 0,
     });
@@ -293,7 +293,7 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: game(),
       best: {},
-      settings: { theme: 'system', dpad: false },
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
     });
     expect(parsed?.history).toEqual([]);
     expect(parsed?.undos).toBe(0);
@@ -303,7 +303,7 @@ describe('best scores', () => {
     const parsed = parseSavedData({
       game: game(),
       best: {},
-      settings: { theme: 'system', dpad: false },
+      settings: { theme: 'system', dpad: false, motion: 'system' as const },
       history: [],
       undos: -1,
     });
@@ -314,12 +314,16 @@ describe('best scores', () => {
     const original = game();
     const upgraded = migrate({
       version: 1,
-      data: { game: original, best: { 4: 700 }, settings: { theme: 'dark', dpad: false } },
+      data: {
+        game: original,
+        best: { 4: 700 },
+        settings: { theme: 'dark', dpad: false, motion: 'system' as const },
+      },
     });
     expect(upgraded).toEqual({
       game: original,
       best: { 4: 700 },
-      settings: { theme: 'dark', dpad: false },
+      settings: { theme: 'dark', dpad: false, motion: 'system' as const },
       history: [],
       undos: 0,
     });
@@ -340,7 +344,7 @@ describe('best scores', () => {
     expect(upgraded).toEqual({
       game: original,
       best: { 4: 700 },
-      settings: { theme: 'dark', dpad: false },
+      settings: { theme: 'dark', dpad: false, motion: 'system' as const },
       history: [original],
       undos: 2,
     });
@@ -354,7 +358,7 @@ describe('best scores', () => {
     });
     expect(upgraded?.history).toEqual([]);
     expect(upgraded?.undos).toBe(0);
-    expect(upgraded?.settings).toEqual({ theme: 'light', dpad: false });
+    expect(upgraded?.settings).toEqual({ theme: 'light', dpad: false, motion: 'system' });
   });
 
   it('only turns the pad on for a literal true, so a tampered value cannot enable it', () => {
@@ -367,17 +371,68 @@ describe('best scores', () => {
       expect(parsed?.settings.dpad, String(dpad)).toBe(false);
     }
     expect(
-      parseSavedData({ game: game(), best: {}, settings: { theme: 'system', dpad: true } })
-        ?.settings.dpad,
+      parseSavedData({
+        game: game(),
+        best: {},
+        settings: { theme: 'system', dpad: true, motion: 'system' as const },
+      })?.settings.dpad,
     ).toBe(true);
   });
 
   it('keeps a valid theme even when the pad field is missing, and vice versa', () => {
     const noPad = parseSavedData({ game: game(), best: {}, settings: { theme: 'dark' } });
-    expect(noPad?.settings).toEqual({ theme: 'dark', dpad: false });
+    expect(noPad?.settings).toEqual({ theme: 'dark', dpad: false, motion: 'system' });
 
     const noTheme = parseSavedData({ game: game(), best: {}, settings: { dpad: true } });
-    expect(noTheme?.settings).toEqual({ theme: 'system', dpad: true });
+    expect(noTheme?.settings).toEqual({ theme: 'system', dpad: true, motion: 'system' });
+  });
+
+  it('upgrades a v3 payload, adding the motion override that follows the system', () => {
+    const original = game();
+    const upgraded = migrate({
+      version: 3,
+      data: {
+        game: original,
+        best: { 4: 700 },
+        settings: { theme: 'dark', dpad: true },
+        history: [original],
+        undos: 2,
+      },
+    });
+    expect(upgraded).toEqual({
+      game: original,
+      best: { 4: 700 },
+      settings: { theme: 'dark', dpad: true, motion: 'system' },
+      history: [original],
+      undos: 2,
+    });
+  });
+
+  it('keeps a saved motion override across a reload', () => {
+    const parsed = parseSavedData({
+      game: game(),
+      best: {},
+      settings: { theme: 'system', dpad: false, motion: 'reduce' },
+    });
+    expect(parsed?.settings.motion).toBe('reduce');
+  });
+
+  it('falls back to following the system for an unknown motion value', () => {
+    for (const motion of ['wobble', '', 3, null]) {
+      const parsed = parseSavedData({
+        game: game(),
+        best: {},
+        settings: { theme: 'system', motion },
+      });
+      expect(parsed?.settings.motion, String(motion)).toBe('system');
+    }
+  });
+
+  it('still returns null for a version beyond the current one', () => {
+    const original = game();
+    expect(
+      migrate({ version: SCHEMA_VERSION + 1, data: { game: original, best: {}, settings: {} } }),
+    ).toBeNull();
   });
 
   it('never decreases', () => {

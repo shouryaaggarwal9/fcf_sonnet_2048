@@ -6,6 +6,7 @@ import {
   type GameState,
   newGame,
   type Tile,
+  type TileMove,
 } from '../engine';
 import { forPersisting, popSnapshot, pushSnapshot, type Snapshot, undoable } from './history';
 import {
@@ -22,6 +23,7 @@ import {
   type BestScores,
   bestFor,
   DEFAULT_SETTINGS,
+  type MotionPreference,
   type SavedData,
   type Settings,
   type ThemePreference,
@@ -32,6 +34,22 @@ import { advanceTracker, createTracker, syncTracker, type TrackerState } from '.
 export interface LastTurn {
   gained: number;
   spawned: Tile | null;
+  /**
+   * Values of the tiles this move created by merging, deduplicated and in ascending order.
+   * Empty when nothing merged. Both partners of one merge report the same destination value,
+   * so a single merge appears once here, and a move that makes two identical tiles reports
+   * that value once. Used to announce merges to a screen reader.
+   */
+  merged: readonly number[];
+}
+
+/** The tiles a move created by merging, from its trace. */
+function mergedValues(moves: readonly TileMove[]): readonly number[] {
+  const values = new Set<number>();
+  for (const step of moves) {
+    if (step.merged) values.add(step.value * 2);
+  }
+  return [...values].sort((a, b) => a - b);
 }
 
 interface GameStore {
@@ -64,6 +82,8 @@ interface GameStore {
   setTheme: (theme: ThemePreference) => void;
   /** Shows or hides the on-screen direction pad. */
   setDpad: (enabled: boolean) => void;
+  /** Sets how much motion to use. */
+  setMotion: (motion: MotionPreference) => void;
   /** Starts a new game. Pass a seed for a reproducible game, or omit it for a random one. */
   restart: (seed?: number) => void;
   /**
@@ -146,7 +166,11 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     set({
       game: result.state,
       tracker: advanceTracker(synced, result.moves, result.spawned),
-      lastTurn: { gained: result.gained, spawned: result.spawned },
+      lastTurn: {
+        gained: result.gained,
+        spawned: result.spawned,
+        merged: mergedValues(result.moves),
+      },
       // recordBest returns the same object when this is not a new record, so this cannot
       // cause a render of its own.
       best: recordBest(get().best, result.state.board.length, result.state.score),
@@ -189,6 +213,11 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   setDpad: (enabled) => {
     if (get().settings.dpad === enabled) return;
     set({ settings: { ...get().settings, dpad: enabled } });
+  },
+
+  setMotion: (motion) => {
+    if (get().settings.motion === motion) return;
+    set({ settings: { ...get().settings, motion } });
   },
 
   restart: (seed = randomSeed()) => {

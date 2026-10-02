@@ -3,11 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Matches the page background per theme, so the mobile browser chrome agrees. -->
     <meta name="theme-color" content="#faf8ef" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)" />
     <title>2048</title>
+    <meta
+      name="description"
+      content="Join matching tiles to reach 2048. Swipe or use the arrow keys, undo any move, and play in light or dark."
+    />
+    <!-- Standalone display on iOS, which reads apple-mobile-web-app-title for the home screen. -->
+    <meta name="apple-mobile-web-app-title" content="2048" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="2048" />
+    <meta
+      property="og:description"
+      content="Join matching tiles to reach 2048. Swipe or use the arrow keys, undo any move, and play in light or dark."
+    />
+    <meta property="og:image" content="/og-image.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script>
       /*
        * Applies the saved theme before the first paint.
@@ -25,10 +41,16 @@
       (() => {
         try {
           let theme = 'system';
+          let motion = 'system';
           const raw = localStorage.getItem('fcf-sonnet-2048/v1');
           if (raw) {
-            const found = JSON.parse(raw)?.data?.settings?.theme;
+            const saved = JSON.parse(raw);
+            const found = saved?.data?.settings?.theme;
             if (found === 'light' || found === 'dark' || found === 'system') theme = found;
+            const foundMotion = saved?.data?.settings?.motion;
+            if (foundMotion === 'system' || foundMotion === 'reduce' || foundMotion === 'full') {
+              motion = foundMotion;
+            }
           }
           const resolved =
             theme === 'system'
@@ -38,6 +60,13 @@
               : theme;
           document.documentElement.setAttribute('data-theme', resolved);
           document.documentElement.style.colorScheme = resolved;
+
+          // The stylesheets read data-motion rather than the media query, because a media
+          // query cannot see an in-app preference. Setting it here means an override is
+          // correct from the very first paint rather than after React mounts.
+          const systemWantsLess = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          const reduce = motion === 'reduce' || (motion === 'system' && systemWantsLess);
+          document.documentElement.dataset.motion = reduce ? 'reduce' : 'full';
         } catch {
           // Light is the declared default in index.css, so there is nothing to repair.
         }

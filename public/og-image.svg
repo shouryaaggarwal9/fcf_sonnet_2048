@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="2048">
+  <!--
+    Social card. Kept as SVG because it is generated from the same four colours as the tiles,
+    so it cannot drift from the game. Phase 7 renders it to PNG alongside the app icons; most
+    platforms accept SVG for Open Graph, though not all, which is why that is a real task
+    rather than a formality.
+  -->
+  <rect width="1200" height="630" fill="#faf8ef" />
+
+  <g>
+    <rect x="120" y="150" width="230" height="230" rx="22" fill="#eee4da" />
+    <rect x="370" y="150" width="230" height="230" rx="22" fill="#f2b179" />
+    <rect x="620" y="150" width="230" height="230" rx="22" fill="#edc850" />
+    <rect x="870" y="150" width="230" height="230" rx="22" fill="#f65e3b" />
+
+    <!-- The ink, which is what the contrast audit fixed. -->
+    <g fill="#231f1a" font-family="system-ui, sans-serif" font-weight="700" text-anchor="middle">
+      <text x="235" y="305" font-size="150">2</text>
+      <text x="485" y="305" font-size="150">8</text>
+      <text x="735" y="305" font-size="150">512</text>
+      <text x="985" y="305" font-size="150">2048</text>
+    </g>
+  </g>
+
+  <text
+    x="600"
+    y="530"
+    fill="#231f1a"
+    font-family="system-ui, sans-serif"
+    font-size="58"
+    font-weight="800"
+    text-anchor="middle"
+  >
+    Join the tiles, reach 2048
+  </text>
+</svg>
