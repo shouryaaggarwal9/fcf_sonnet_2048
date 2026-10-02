@@ -266,29 +266,69 @@ Notes for 5.4 and 5.5:
 
 ## Phase 6: polish and accessibility
 
-- [ ] **Layout:** responsive from 320px to desktop, portrait and landscape phones (the current board width
+- [x] **Layout:** responsive from 320px to desktop, portrait and landscape phones (the current board width
       `min(92vw, 60dvh, 480px)` is a starting point). Safe-area insets (`env(safe-area-inset-*)`) for
       notched phones and standalone PWA. Test landscape specifically.
-- [ ] **Screen readers:** a visually hidden `aria-live="polite"` region announcing meaningful events only
+- [x] **Screen readers:** a visually hidden `aria-live="polite"` region announcing meaningful events only
       (for example "Merged to 128. Score 1,456." and "Game over"), not every tile. Board has an
       accessible name and a short instructions text. Ghost tiles remain `aria-hidden`. Overlays are
       dialogs.
-- [ ] **Focus management:** when the win or game-over overlay appears, move focus to its primary button and
+- [x] **Focus management:** when the win or game-over overlay appears, move focus to its primary button and
       restore it afterwards. Known issue: focus currently stays on the header button.
-- [ ] **Keyboard:** visible `:focus-visible` everywhere. Logical tab order. Document shortcuts in a
+- [x] **Keyboard:** visible `:focus-visible` everywhere. Logical tab order. Document shortcuts in a
       How-to-play dialog (rules, controls, undo shortcut).
-- [ ] **Settings dialog:** theme, on-screen D-pad, reduced-motion override (respect system by default),
+- [x] **Settings dialog:** theme, on-screen D-pad, reduced-motion override (respect system by default),
       sound and haptics toggles if implemented.
 - [ ] **Sound and haptics (optional):** `navigator.vibrate` for merges where supported, short
       Web Audio blips. Off by default or at least obviously mutable. Respect user gesture rules for audio.
       Check that it adds negligible weight.
 - [ ] **Branding:** product name, favicon, header, and metadata (see "Owner decisions"). Open Graph and Twitter
       card image, `<meta name="description">`, `lang`, canonical URL.
-- [ ] **Component tests:** add jsdom and `@testing-library/react` for UI logic (overlay, undo button
+- [x] **Component tests:** add jsdom and `@testing-library/react` for UI logic (overlay, undo button
       disabled state, theme toggle, restart confirm). Keep engine tests in `node` environment. Configure
       per-file `// @vitest-environment jsdom` or a Vitest project, not a global switch.
-- [ ] **Fuzz tests are the slowest part of the suite (~10s).** Move them behind their own script
+- [x] **Fuzz tests are the slowest part of the suite (~10s).** Move them behind their own script
       (`test:fuzz`) only if watch-mode speed becomes an actual problem, and keep them in CI.
+
+What Phase 6 did, and what it deliberately left open:
+
+- **Announcements are quiet on purpose.** A live region speaks for merges, reaching 2048, and game
+  over, and says nothing for a move that only slid tiles. The store now reports which tiles a move
+  merged (`lastTurn.merged`), so the wording can name them. Two details worth keeping: the region is
+  `polite`, never `assertive`; and it clears before each new sentence, because a live region only
+  speaks when its content *changes* and two identical merges would otherwise be silent.
+- **Undoing announces nothing**, because an undo clears `lastTurn`. The region keeps the sentence it
+  last said, which is correct, because retaining content announces nothing.
+- **The board is `role="img"` with a label**, not a grid of sixteen tiles. Walking them is noise and
+  the live region covers the changes. The instructions sit on the board's label.
+- **The overlay takes focus when it settles and restores it afterwards**, which was the known issue.
+  Restoring matters as much as taking: otherwise dismissing it drops the player at the top of the
+  document. Verified by a component test as well as in the browser.
+- **One `Modal` shell** does the focus trap, Escape, backdrop, and focus restoration for both the
+  settings and how-to-play dialogs, so the two cannot drift apart. The native `<dialog>` does the real
+  work; `showModal()` is called imperatively because React's `open` prop gives a plain dialog.
+- **Motion moved from a media query to `data-motion`.** A media query cannot see an in-app preference,
+  so honouring an override would have meant duplicating every reduced-motion block under a second
+  selector. The boot script sets `data-motion` next to `data-theme`, so an override is correct from the
+  first paint. Choosing Full is a deliberate override of the OS, and the dialog says so.
+- **The focus ring is a themed variable, not `currentColor`,** and covers radios and checkboxes as
+  well as buttons, which would otherwise fall back to a browser default matching neither theme.
+  `contrast.test.ts` asserts it clears 3:1 against every surface it lands on.
+- **Component tests** use jsdom and Testing Library, opted in per file so the rest of the suite stays
+  in node. The production bundle is byte-identical, which is how the dev-only claim was checked.
+  Plain assertions are used rather than jest-dom matchers, to avoid a dependency for `textContent`.
+- **The fuzz tests stayed in `test`.** The roadmap only moves them if watch mode is genuinely slow,
+  and it is not: vitest re-runs only affected files, so the 10s of fuzz costs anything only when the
+  engine changes. A `test:fuzz` script was added for running them alone.
+
+Two items are **not** done, both because they are owner decisions rather than engineering:
+
+- **Sound and haptics.** Marked optional here and listed as an open question. Sound is a taste call
+  the roadmap reserves for the owner. The settings dialog is now ready to take the toggles.
+- **Branding.** The metadata is done: description, Open Graph and Twitter tags, `viewport-fit=cover`
+  for safe areas, an `og-image.svg` built from the same tile colours so it cannot drift, and
+  `lang="en"`. The product name, favicon, and icon concept are still open question 1, so the title
+  stays "2048" and no name was invented.
 
 ---
 
