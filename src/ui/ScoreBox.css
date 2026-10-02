@@ -14,7 +14,9 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.8;
+  /* A solid dim ink, not opacity on the main ink. opacity would blend toward the panel and
+     quietly undo the contrast the ink was chosen for. */
+  color: var(--panel-fg-dim);
 }
 
 .score-value {

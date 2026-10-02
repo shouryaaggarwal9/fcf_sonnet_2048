@@ -1,9 +1,12 @@
 /*
+/*
  * Every colour lives here as a variable, defined once per theme and selected by
  * `data-theme` on <html>. There is deliberately no prefers-color-scheme media query here:
  * a tiny inline script in index.html reads the saved preference before first paint and
  * always sets data-theme, so the OS setting is resolved in JS and can be overridden.
  * That is also what keeps the player from seeing a flash of the wrong theme.
+ *
+ * Ratios are asserted by src/state/contrast.test.ts.
  */
 :root,
 :root[data-theme="light"] {
@@ -12,16 +15,20 @@
   --board-width: min(92vw, 60dvh, 480px);
 
   --page-bg: #faf8ef;
-  --text: #776e65;
+  --text: #6b6152;
   --board-bg: #bbada0;
   --cell-bg: rgb(238 228 218 / 0.35);
   --panel-bg: #bbada0;
-  --panel-fg: #f9f6f2;
-  --btn-bg: #8f7a66;
+  /* Dark ink on the tan panel: 7.48:1. White on tan measured 2.03:1, a clear failure. */
+  --panel-fg: #231f1a;
+  --panel-fg-dim: #4a4034;
+  --btn-bg: #7d6a58;
   --btn-fg: #f9f6f2;
+  /* Dark ink on the signature orange: 5.13:1. White on it measured 2.96:1. */
   --btn-primary-bg: #f65e3b;
-  --overlay-over: rgb(238 228 218 / 0.8);
-  --overlay-won: rgb(237 194 46 / 0.6);
+  --btn-primary-fg: #231f1a;
+  --overlay-over: rgb(238 228 218 / 0.92);
+  --overlay-won: rgb(237 194 46 / 0.92);
 }
 
 :root[data-theme="dark"] {
@@ -33,10 +40,14 @@
   --cell-bg: rgb(255 255 255 / 0.06);
   --panel-bg: #3a3530;
   --panel-fg: #f9f6f2;
+  --panel-fg-dim: #bdb2a4;
   --btn-bg: #5a5145;
-  --btn-primary-bg: #d9482a;
-  --overlay-over: rgb(27 26 23 / 0.82);
-  --overlay-won: rgb(160 125 20 / 0.72);
+  --btn-fg: #f9f6f2;
+  /* Darkened from #d9482a, which failed with white ink (3.97:1) and with dark ink (3.83:1). */
+  --btn-primary-bg: #c73a1b;
+  --btn-primary-fg: #f9f6f2;
+  --overlay-over: rgb(27 26 23 / 0.92);
+  --overlay-won: rgb(120 92 14 / 0.92);
 }
 
 *,
@@ -84,4 +95,7 @@ body {
 
 .btn-primary {
   background: var(--btn-primary-bg);
+  /* Its own ink, because the signature orange needs dark text to pass and the dark theme's
+     primary button needs light text. Both are defined per theme in index.css. */
+  color: var(--btn-primary-fg);
 }

@@ -148,9 +148,15 @@ Decisions and things later phases must not undo:
   `gameInput.reset()` before `store.undo()`. Without it a move queued for the state being left
   fires immediately after and undoes the undo. `state` must not import `gameInput`, so that file
   is the seam.
-- **`store.boardEpoch`** is bumped by undo and by `adopt`. The board keys its tile layer on it, so
-  a replacement remounts the tiles (no stale positions) and crossfades. Ordinary slides never
-  change it, so they are untouched.
+- **`store.boardEpoch`** is bumped by undo and by `adopt`. The board keys its live tile layer on it, so a
+      replacement never reuses a DOM node from the board it replaced; a reused node would slide from
+  a stale position. Ordinary slides never change it, so they are untouched.
+- **The replacement is a dissolve, not a fade-in.** The owner reported that fading the new board in
+  made everything "reappear with a pop", which was accurate: the whole board was materialising from
+  `opacity: 0`. Now the live board is correct from its first frame and the board it replaced sits
+  on top of it and fades out (`board-dissolve`). The outgoing layer is `pointer-events: none` and
+  `aria-hidden`, and is removed on `animationend` with a 400ms timeout backstop for a backgrounded
+  tab, where animations do not run.
 - `isUndoKey` sits in `ui/input.ts` beside `keyToDirection` but is a separate function. It cannot
   live in the direction map: `keyToDirection` rejects every modified key, which would make
   `Ctrl+Z` impossible. A test asserts no key triggers both.
@@ -163,30 +169,57 @@ Current theming uses `@media (prefers-color-scheme: dark)` blocks in `src/index.
 `src/ui/Board.css` (including tile tier 1 and 2 dark variants). This must be refactored so the
 user's choice can override the system.
 
-- [ ] **Three states:** `system` (default), `light`, `dark`. Persisted in settings (5.1). Apply by
+- [x] **Three states:** `system` (default), `light`, `dark`. Persisted in settings (5.1). Apply by
       setting `data-theme="light|dark"` on `<html>`. In `system` mode, resolve through `matchMedia` and
       **live-update** when the OS setting changes (listener cleaned up properly).
-- [ ] **Refactor CSS:** all colors live in CSS custom properties defined once for light and once
+- [x] **Refactor CSS:** all colors live in CSS custom properties defined once for light and once
       for dark under `:root[data-theme="light"]` / `:root[data-theme="dark"]`. No remaining
       `prefers-color-scheme` media queries for colors except the single place that resolves `system`
       (or resolve it in JS and always set `data-theme`). Set `color-scheme` per theme so native
       controls and scrollbars match. Tile palettes move to variables, not duplicated selectors.
-- [ ] **No flash of wrong theme:** a tiny inline script in `index.html` `<head>` reads the stored setting
+- [x] **No flash of wrong theme:** a tiny inline script in `index.html` `<head>` reads the stored setting
       and sets `data-theme` before first paint. It must be try/catch-safe. **Note for Phase 9:** an inline
       script requires a CSP hash or nonce. Plan the CSP accordingly. Do not use `unsafe-inline`.
-- [ ] **`<meta name="theme-color">`** updates with the resolved theme (and later feeds the PWA manifest).
-- [ ] **Toggle UI:** an accessible control in the header. Recommended: a single icon button cycling
+- [x] **`<meta name="theme-color">`** updates with the resolved theme (and later feeds the PWA manifest).
+- [x] **Toggle UI:** an accessible control in the header. Recommended: a single icon button cycling
       system, light, dark, with `aria-label` stating the current mode and the next action (or a
       3-option radio group in a settings popover). Icon changes per mode. Minimum 44x44px target.
       Keyboard operable, visible focus, announces changes.
-- [ ] **Overlay and score colors** also come from variables. Check every component in both themes.
-- [ ] **Contrast audit (both themes):** verify WCAG AA for all tile text and UI text. The classic palette's
+- [x] **Overlay and score colors** also come from variables. Check every component in both themes.
+- [x] **Contrast audit (both themes):** verify WCAG AA for all tile text and UI text. The classic palette's
       light text on yellow tiles (tiers 7 to 11) is **known to be low contrast**. Compute ratios, then adjust
       colors or text colors so every tier passes at least 4.5:1 for numbers (3:1 minimum for large text if
       you argue it's large, and document it). Keep tiers visually distinct.
-- [ ] Tests: theme resolution function (pure, with injected `matchMedia` result), cycling order, storage
+- [x] Tests: theme resolution function (pure, with injected `matchMedia` result), cycling order, storage
       fallback. Playwright (Phase 8): toggling changes `data-theme`, persists across reload, and `system`
       follows `emulateMedia`.
+
+Notes, and what the audit actually found:
+
+- **The toggle is two states, not three.** The owner's brief was a switch between the two themes
+  that already worked, so it is one icon button. A first visit still follows the OS and the choice
+  is remembered from then on. The `system` value is retained as the unset default so a save from a
+  first visit round-trips, and so a three-way control remains possible later.
+- **The roadmap understated the contrast problem.** Measured against the authentic values read from
+  `gabrielecirulli/2048`, the original palette fails AA on **ten of twelve** tiers, not only the
+  yellows: tiers 1 and 2 at 3.98 and 3.83, tiers 3 to 6 at 1.72 to 2.96, tiers 7 to 11 at 1.42 to
+  1.58. The original predates WCAG 2.1.
+- **Tile backgrounds are untouched.** All twelve are still the authentic colours, asserted by test,
+  so the game still reads as 2048. Only the ink changed: dark `#231f1a` on the bright tiles and
+  light on the single dark super tile. Worst tier is now 5.13:1, verified in the live DOM.
+- **UI chrome had unrecorded debt.** The score value on the tan panel measured 2.03:1 and the
+  primary button 2.96:1. The secondary button and the dark theme's primary button failed with
+  *both* white and dark ink, so those two backgrounds were darkened rather than their text changed.
+  The score label also used `opacity: 0.8`, which blended toward the panel and quietly undid its
+  own contrast; it is a solid dim ink now.
+- **Enforced, not just documented.** `src/state/contrast.test.ts` parses the shipped CSS, computes
+  WCAG ratios, and fails the build if any tier or UI pair drops below AA, if the authentic tile
+  colours drift, or if a tier stops having a resolvable ink. That last check exists because of a
+  real bug: a tier that set `--tile-bg` without `--tile-fg` made `color: var(--tile-fg)` invalid, so
+  the tile inherited the body colour at 1.9:1 **while that test file was green**. Only measuring
+  the live DOM caught it. `.tile` declares a default ink now, so it cannot recur.
+- Two judgement calls need the owner's eye: dark numerals on the orange and yellow tiles is a
+  visible departure from the classic look, and the two darkened buttons.
 
 ### 5.4 New game and restart behavior
 

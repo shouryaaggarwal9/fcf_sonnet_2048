@@ -42,21 +42,24 @@
 }
 
 /*
- * Undo, or a game restored from another tab, replaces the board rather than moving tiles.
- * Running the old positions backwards would read as a glitch, so the layer is remounted and
- * this short opacity-only crossfade covers the swap. The layer is keyed on store.boardEpoch,
- * which only changes on a replacement, so ordinary slides never trigger it.
+ * The board being replaced (undo, or a game restored from another tab) sits on top of the
+ * live one and dissolves. The live board is already correct from the first frame, so nothing
+ * ever appears out of nothing, which is what made the earlier version read as a pop.
+ *
+ * Opacity only: running the old positions backwards would look like a glitch, and a tile
+ * that is still catching a slide must not be nudged.
  */
-.board-tiles[data-fade="true"] {
-  animation: board-swap var(--restore-ms) linear;
+.board-tiles-outgoing {
+  pointer-events: none; /* a dissolving tile must never intercept a swipe */
+  animation: board-dissolve var(--restore-ms) linear forwards;
 }
 
-@keyframes board-swap {
+@keyframes board-dissolve {
   from {
-    opacity: 0;
+    opacity: 1;
   }
   to {
-    opacity: 1;
+    opacity: 0;
   }
 }
 
@@ -70,6 +73,14 @@
  * size, so "col * (100% + gap)" lands it on the right cell at any board size.
  */
 .tile {
+  /*
+   * The default ink for a tile, so no tier can accidentally leave --tile-fg unset. An unset
+   * custom property makes `color: var(--tile-fg)` invalid, and the declaration then falls
+   * back to the inherited body colour, which silently costs several tiers their contrast.
+   * Tiers 1, 2, and 12 override this.
+   */
+  --tile-fg: var(--tile-ink);
+
   position: absolute;
   top: 0;
   left: 0;
@@ -117,74 +128,72 @@
 /*
  * Palette: one tier per power of two, 2 to 2048. Tier 12 covers everything bigger.
  *
- * The two lightest tiles are defined as variables so the dark theme can override them,
- * rather than repeating the selectors inside a media query. Everything else is identical in
- * both themes.
+ * The backgrounds are the authentic 2048 colours, read from gabrielecirulli/2048. The original
+ * painted near-white numbers on tiers 3 and up, which measures 1.42:1 to 2.96:1 and fails WCAG
+ * AA badly. The backgrounds are kept exactly as shipped so the game still reads as 2048, and
+ * the text is what changed: dark ink on every bright tile, 5.13:1 at worst.
+ *
+ * Ratios are asserted by src/state/contrast.test.ts, so a palette tweak cannot silently regress.
  */
 :root {
+  /* Tiers 1 and 2 are the only backgrounds that differ per theme. */
   --tile-1-bg: #eee4da;
-  --tile-1-fg: #776e65;
   --tile-2-bg: #ede0c8;
-  --tile-2-fg: #776e65;
+  --tile-ink: #231f1a;
+  --tile-ink-inverse: #f9f6f2;
 }
 
-/* The two lightest tiles would glare on a dark board, so they get darker variants. */
+/* On a dark board the two lightest tiles would glare, so they darken. Their ink flips too. */
 :root[data-theme="dark"] {
   --tile-1-bg: #4a443c;
-  --tile-1-fg: #f0e8dc;
   --tile-2-bg: #5a5145;
-  --tile-2-fg: #f0e8dc;
+  --tile-1-ink: #f0e8dc;
+  --tile-2-ink: #f0e8dc;
 }
 
 .tile[data-tier="1"] {
   --tile-bg: var(--tile-1-bg);
-  --tile-fg: var(--tile-1-fg);
+  --tile-fg: var(--tile-1-ink, var(--tile-ink));
 }
 .tile[data-tier="2"] {
   --tile-bg: var(--tile-2-bg);
-  --tile-fg: var(--tile-2-fg);
+  --tile-fg: var(--tile-2-ink, var(--tile-ink));
 }
+
+/* Tiers 3 to 11 are identical in both themes, so only their backgrounds are set here. */
 .tile[data-tier="3"] {
   --tile-bg: #f2b179;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="4"] {
   --tile-bg: #f59563;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="5"] {
   --tile-bg: #f67c5f;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="6"] {
   --tile-bg: #f65e3b;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="7"] {
   --tile-bg: #edcf72;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="8"] {
   --tile-bg: #edcc61;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="9"] {
   --tile-bg: #edc850;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="10"] {
   --tile-bg: #edc53f;
-  --tile-fg: #f9f6f2;
 }
 .tile[data-tier="11"] {
   --tile-bg: #edc22e;
-  --tile-fg: #f9f6f2;
-}
-.tile[data-tier="12"] {
-  --tile-bg: #3c3a32;
-  --tile-fg: #f9f6f2;
 }
 
+/* The super tile is the only dark one, so it is the only one that keeps light ink. */
+.tile[data-tier="12"] {
+  --tile-bg: #3c3a32;
+  --tile-fg: var(--tile-ink-inverse);
+}
 /* ---------- Motion ---------- */
 
 /* Spawn: grows in with a fade. Quiet, because nothing happened to existing tiles. */
