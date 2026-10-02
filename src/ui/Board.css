@@ -114,14 +114,35 @@
   font-size: 20cqw;
 }
 
-/* Palette: one tier per power of two, 2 to 2048. Tier 12 covers everything bigger. */
+/*
+ * Palette: one tier per power of two, 2 to 2048. Tier 12 covers everything bigger.
+ *
+ * The two lightest tiles are defined as variables so the dark theme can override them,
+ * rather than repeating the selectors inside a media query. Everything else is identical in
+ * both themes.
+ */
+:root {
+  --tile-1-bg: #eee4da;
+  --tile-1-fg: #776e65;
+  --tile-2-bg: #ede0c8;
+  --tile-2-fg: #776e65;
+}
+
+/* The two lightest tiles would glare on a dark board, so they get darker variants. */
+:root[data-theme="dark"] {
+  --tile-1-bg: #4a443c;
+  --tile-1-fg: #f0e8dc;
+  --tile-2-bg: #5a5145;
+  --tile-2-fg: #f0e8dc;
+}
+
 .tile[data-tier="1"] {
-  --tile-bg: #eee4da;
-  --tile-fg: #776e65;
+  --tile-bg: var(--tile-1-bg);
+  --tile-fg: var(--tile-1-fg);
 }
 .tile[data-tier="2"] {
-  --tile-bg: #ede0c8;
-  --tile-fg: #776e65;
+  --tile-bg: var(--tile-2-bg);
+  --tile-fg: var(--tile-2-fg);
 }
 .tile[data-tier="3"] {
   --tile-bg: #f2b179;
@@ -162,18 +183,6 @@
 .tile[data-tier="12"] {
   --tile-bg: #3c3a32;
   --tile-fg: #f9f6f2;
-}
-
-/* The two lightest tiles would glare on a dark board, so they get darker variants. */
-@media (prefers-color-scheme: dark) {
-  .tile[data-tier="1"] {
-    --tile-bg: #4a443c;
-    --tile-fg: #f0e8dc;
-  }
-  .tile[data-tier="2"] {
-    --tile-bg: #5a5145;
-    --tile-fg: #f0e8dc;
-  }
 }
 
 /* ---------- Motion ---------- */

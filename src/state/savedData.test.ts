@@ -247,6 +247,80 @@ describe('best scores', () => {
     expect(bestFor(best, 4)).toBe(200);
   });
 
+  it('keeps a valid game, best, and settings', () => {
+    const original = game();
+    const parsed = parseSavedData({
+      game: original,
+      best: { 4: 900 },
+      settings: { theme: 'dark' },
+    });
+    expect(parsed).toEqual({
+      game: original,
+      best: { 4: 900 },
+      settings: { theme: 'dark' },
+      history: [],
+      undos: 0,
+    });
+  });
+
+  it('keeps undo history and the undo counter', () => {
+    const first = game();
+    const second = newGame(5);
+    const parsed = parseSavedData({
+      game: second,
+      best: {},
+      settings: { theme: 'system' },
+      history: [first, second],
+      undos: 3,
+    });
+    expect(parsed?.history).toEqual([first, second]);
+    expect(parsed?.undos).toBe(3);
+  });
+
+  it('drops only the bad history entries, keeping the rest', () => {
+    const good = game();
+    const parsed = parseSavedData({
+      game: game(),
+      best: {},
+      settings: { theme: 'system' },
+      history: [good, { board: 'tampered' }, null],
+      undos: 0,
+    });
+    expect(parsed?.history).toEqual([good]);
+  });
+
+  it('defaults history and undos when absent, as a v1 payload has neither', () => {
+    const parsed = parseSavedData({ game: game(), best: {}, settings: { theme: 'system' } });
+    expect(parsed?.history).toEqual([]);
+    expect(parsed?.undos).toBe(0);
+  });
+
+  it('rejects a negative or fractional undo count', () => {
+    const parsed = parseSavedData({
+      game: game(),
+      best: {},
+      settings: { theme: 'system' },
+      history: [],
+      undos: -1,
+    });
+    expect(parsed?.undos).toBe(0);
+  });
+
+  it('upgrades a v1 payload, keeping the game and best but starting with no history', () => {
+    const original = game();
+    const upgraded = migrate({
+      version: 1,
+      data: { game: original, best: { 4: 700 }, settings: { theme: 'dark' } },
+    });
+    expect(upgraded).toEqual({
+      game: original,
+      best: { 4: 700 },
+      settings: { theme: 'dark' },
+      history: [],
+      undos: 0,
+    });
+  });
+
   it('never decreases', () => {
     const first = recordBest({}, 4, 900);
     expect(recordBest(first, 4, 100)).toBe(first);

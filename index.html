@@ -4,7 +4,45 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Matches the page background per theme, so the mobile browser chrome agrees. -->
+    <meta name="theme-color" content="#faf8ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)" />
     <title>2048</title>
+    <script>
+      /*
+       * Applies the saved theme before the first paint.
+       *
+       * Without this, the page renders with the light default and then snaps to dark once
+       * React mounts, which is a visible flash on every load. This is deliberately inline:
+       * an external file would be fetched after the first paint and too late to help.
+       *
+       * Phase 9 note: a strict CSP will not allow an inline script. Compute this script's
+       * SHA-256 hash at build time and list it in script-src. Do not allow 'unsafe-inline'.
+       *
+       * Everything is wrapped because storage throws in private mode, and a theme is never
+       * worth breaking the page over.
+       */
+      (() => {
+        try {
+          let theme = 'system';
+          const raw = localStorage.getItem('fcf-sonnet-2048/v1');
+          if (raw) {
+            const found = JSON.parse(raw)?.data?.settings?.theme;
+            if (found === 'light' || found === 'dark' || found === 'system') theme = found;
+          }
+          const resolved =
+            theme === 'system'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : theme;
+          document.documentElement.setAttribute('data-theme', resolved);
+          document.documentElement.style.colorScheme = resolved;
+        } catch {
+          // Light is the declared default in index.css, so there is nothing to repair.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

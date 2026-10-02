@@ -10,8 +10,10 @@ import { gameInput } from './ui/gameInput';
 import { motionVars } from './ui/motion';
 import { ScoreBox } from './ui/ScoreBox';
 import { ScorePopups } from './ui/ScorePopups';
+import { ThemeToggle } from './ui/ThemeToggle';
 import { useKeyboard } from './ui/useKeyboard';
 import { useSwipe } from './ui/useSwipe';
+import { useTheme } from './ui/useTheme';
 import { useUndo } from './ui/useUndo';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
@@ -34,6 +36,7 @@ export default function App() {
   const undo = useUndo();
   useKeyboard({ onMove: gameInput.input, onUndo: undo });
   const swipe = useSwipe(gameInput.input);
+  const theme = useTheme();
 
   const tiles = useMemo(() => drawOrder(tracker), [tracker]);
   const bestScore = bestFor(best, game.board.length);
@@ -49,12 +52,15 @@ export default function App() {
     <main className="app" style={motionVars}>
       <header className="app-header">
         <h1 className="app-title">2048</h1>
-        <div className="scores">
-          <ScoreBox label="Score" value={game.score} live={game.moves > 0}>
-            <ScorePopups moves={game.moves} gained={lastTurn?.gained ?? 0} />
-          </ScoreBox>
-          <ScoreBox label="Best" value={bestScore} live={bestScore > 0} />
-          <ScoreBox label="Moves" value={game.moves} live={game.moves > 0} />
+        <div className="app-header-end">
+          <ThemeToggle next={theme.next} onToggle={theme.toggle} />
+          <div className="scores">
+            <ScoreBox label="Score" value={game.score} live={game.moves > 0}>
+              <ScorePopups moves={game.moves} gained={lastTurn?.gained ?? 0} />
+            </ScoreBox>
+            <ScoreBox label="Best" value={bestScore} live={bestScore > 0} />
+            <ScoreBox label="Moves" value={game.moves} live={game.moves > 0} />
+          </div>
         </div>
       </header>
 

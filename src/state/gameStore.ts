@@ -18,7 +18,14 @@ import {
   safeStorage,
   saveTo,
 } from './persistence';
-import { type BestScores, bestFor, type SavedData } from './savedData';
+import {
+  type BestScores,
+  bestFor,
+  DEFAULT_SETTINGS,
+  type SavedData,
+  type Settings,
+  type ThemePreference,
+} from './savedData';
 import { advanceTracker, createTracker, syncTracker, type TrackerState } from './tileTracker';
 
 /** What the last accepted move did. A new object per move, so the UI can use it as a trigger. */
@@ -35,6 +42,8 @@ interface GameStore {
   lastTurn: LastTurn | null;
   /** Highest score ever reached, per board size. Never decreases. */
   best: BestScores;
+  /** User preferences. Theme is applied to <html> by the UI, not by the store. */
+  settings: Settings;
   /** States from before each accepted move, oldest first. Bounded by HISTORY_CAP. */
   history: readonly Snapshot[];
   /** How many undos have been used this session. Persisted for a future daily limit. */
@@ -51,6 +60,8 @@ interface GameStore {
   undo: () => boolean;
   /** Dismisses the win screen. */
   keepPlaying: () => void;
+  /** Saves a preference. Only `theme` exists so far. */
+  setTheme: (theme: ThemePreference) => void;
   /** Starts a new game. Pass a seed for a reproducible game, or omit it for a random one. */
   restart: (seed?: number) => void;
   /**
@@ -73,18 +84,27 @@ export function initialState(): {
   game: GameState;
   tracker: TrackerState;
   best: BestScores;
+  settings: Settings;
   history: readonly Snapshot[];
   undos: number;
 } {
   const saved = loadSaved(storageOrNull());
   if (!saved) {
     const game = newGame(randomSeed());
-    return { game, tracker: createTracker(game.board), best: {}, history: [], undos: 0 };
+    return {
+      game,
+      tracker: createTracker(game.board),
+      best: {},
+      settings: DEFAULT_SETTINGS,
+      history: [],
+      undos: 0,
+    };
   }
   return {
     game: saved.game,
     tracker: createTracker(saved.game.board, 1, 'initial'),
     best: saved.best,
+    settings: saved.settings,
     history: saved.history.map((game) => ({ game })),
     undos: saved.undos,
   };
@@ -107,6 +127,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   tracker: start.tracker,
   lastTurn: null,
   best: start.best,
+  settings: start.settings,
   history: start.history,
   undos: start.undos,
   boardEpoch: 0,
@@ -158,6 +179,11 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     if (next !== get().game) set({ game: next });
   },
 
+  setTheme: (theme) => {
+    if (get().settings.theme === theme) return; // no state change, so no re-render
+    set({ settings: { theme } });
+  },
+
   restart: (seed = randomSeed()) => {
     const game = newGame(seed);
     // nextId carries over, so ids stay unique across games and old nodes can't be reused.
@@ -201,15 +227,8 @@ function cancelPendingSave(): void {
 }
 
 function currentSave(): SavedData {
-  const { game, best, history, undos } = useGameStore.getState();
-  // Theme is hard-coded until Phase 5.3, where settings become user-controlled.
-  return {
-    game,
-    best,
-    settings: { theme: 'system' },
-    history: forPersisting(history),
-    undos,
-  };
+  const { game, best, settings, history, undos } = useGameStore.getState();
+  return { game, best, settings, history: forPersisting(history), undos };
 }
 
 /** Writes now. Used on page hide, where a pending debounce would never fire. */
@@ -235,8 +254,8 @@ export function scheduleSave(): void {
  */
 export function startPersistence(): () => void {
   const unsubscribe = useGameStore.subscribe((state, previous) => {
-    // A rejected move changes nothing. An undo does change the game, so it saves too.
-    if (state.game === previous.game) return;
+    // A rejected move changes nothing. An undo, or a settings change, does.
+    if (state.game === previous.game && state.settings === previous.settings) return;
     scheduleSave();
   });
 
@@ -291,6 +310,7 @@ export function startStorageSync(): () => void {
     if (!incoming) return;
 
     const best = mergeBest(useGameStore.getState().best, incoming.best);
+    // Another tab's theme choice is adopted too, so the two windows agree.
     useGameStore.getState().adopt({
       game: incoming.game,
       best,

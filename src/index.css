@@ -1,6 +1,13 @@
-:root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+/*
+ * Every colour lives here as a variable, defined once per theme and selected by
+ * `data-theme` on <html>. There is deliberately no prefers-color-scheme media query here:
+ * a tiny inline script in index.html reads the saved preference before first paint and
+ * always sets data-theme, so the OS setting is resolved in JS and can be overridden.
+ * That is also what keeps the player from seeing a flash of the wrong theme.
+ */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
 
   --board-width: min(92vw, 60dvh, 480px);
 
@@ -17,18 +24,19 @@
   --overlay-won: rgb(237 194 46 / 0.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page-bg: #1b1a17;
-    --text: #d8cfc4;
-    --board-bg: #3a3530;
-    --cell-bg: rgb(255 255 255 / 0.06);
-    --panel-bg: #3a3530;
-    --btn-bg: #5a5145;
-    --btn-primary-bg: #d9482a;
-    --overlay-over: rgb(27 26 23 / 0.82);
-    --overlay-won: rgb(160 125 20 / 0.72);
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page-bg: #1b1a17;
+  --text: #d8cfc4;
+  --board-bg: #3a3530;
+  --cell-bg: rgb(255 255 255 / 0.06);
+  --panel-bg: #3a3530;
+  --panel-fg: #f9f6f2;
+  --btn-bg: #5a5145;
+  --btn-primary-bg: #d9482a;
+  --overlay-over: rgb(27 26 23 / 0.82);
+  --overlay-won: rgb(160 125 20 / 0.72);
 }
 
 *,

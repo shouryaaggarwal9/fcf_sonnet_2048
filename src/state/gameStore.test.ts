@@ -190,6 +190,41 @@ describe('mergeBest', () => {
   });
 });
 
+describe('settings', () => {
+  it('starts following the system theme', () => {
+    useGameStore.setState({ settings: { theme: 'system' } });
+    expect(store().settings.theme).toBe('system');
+  });
+
+  it('stores an explicit theme choice', () => {
+    useGameStore.setState({ settings: { theme: 'system' } });
+    store().setTheme('dark');
+    expect(store().settings.theme).toBe('dark');
+    store().setTheme('light');
+    expect(store().settings.theme).toBe('light');
+  });
+
+  it('does not change state when the theme is already what was asked for', () => {
+    useGameStore.setState({ settings: { theme: 'dark' } });
+    const before = store().settings;
+    store().setTheme('dark');
+    expect(store().settings).toBe(before);
+  });
+
+  it('keeps the theme across a new game', () => {
+    useGameStore.setState({ settings: { theme: 'dark' } });
+    store().restart(3);
+    expect(store().settings.theme).toBe('dark');
+  });
+
+  it('does not disturb the game when only the theme changes', () => {
+    store().restart(4);
+    const before = store().game;
+    store().setTheme('dark');
+    expect(store().game).toBe(before);
+  });
+});
+
 describe('adopt', () => {
   it('replaces game and tracker together, and rebuilds without animating', () => {
     useGameStore.setState({ best: {} });
