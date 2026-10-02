@@ -184,6 +184,19 @@ describe('UI text passes WCAG AA in both themes', () => {
     expect(rootVars).toContain('--btn-primary-fg');
     expect(darkVars).toContain('--btn-primary-fg');
   });
+
+  it('gives the focus ring at least 3:1 against every surface it lands on', () => {
+    // WCAG 2.2 asks a focus indicator for 3:1 against adjacent colours. The ring has to work on
+    // the page, the tan score panel, and the button it surrounds, in both themes.
+    for (const theme of ['light', 'dark'] as const) {
+      const css = theme === 'light' ? rootVars : darkVars;
+      const ring = variable(css, '--focus-ring');
+      for (const surface of ['--page-bg', '--panel-bg', '--btn-bg', '--btn-primary-bg']) {
+        const ratio = contrast(ring, variable(css, surface));
+        expect(ratio, `${theme} ${ring} on ${variable(css, surface)}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
 });
 
 describe('the palette still looks like 2048', () => {

@@ -16,6 +16,7 @@
 
   --page-bg: #faf8ef;
   --text: #6b6152;
+  --focus-ring: #231f1a;
   --board-bg: #bbada0;
   --cell-bg: rgb(238 228 218 / 0.35);
   --panel-bg: #bbada0;
@@ -36,6 +37,7 @@
 
   --page-bg: #1b1a17;
   --text: #d8cfc4;
+  --focus-ring: #f9f6f2;
   --board-bg: #3a3530;
   --cell-bg: rgb(255 255 255 / 0.06);
   --panel-bg: #3a3530;
@@ -110,8 +112,17 @@ body {
   filter: brightness(1.1);
 }
 
-.btn:focus-visible {
-  outline: 3px solid currentColor;
+/*
+ * Focus ring. Defined per theme rather than as currentColor, because a control sitting on the
+ * tan score panel needs a ring that is visible against both the page and the panel.
+ *
+ * :where() keeps this at zero specificity, so a component can still restyle focus if it has a
+ * reason to. It covers every interactive element, not just .btn, because the settings dialog
+ * adds radios and a checkbox that would otherwise fall back to the browser default ring, which
+ * matches neither theme.
+ */
+:where(button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
