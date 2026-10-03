@@ -28,6 +28,7 @@ import {
   type Settings,
   type ThemePreference,
 } from './savedData';
+import { seedFromLocation } from './seed';
 import { advanceTracker, createTracker, syncTracker, type TrackerState } from './tileTracker';
 
 /** What the last accepted move did. A new object per move, so the UI can use it as a trigger. */
@@ -111,8 +112,20 @@ export function initialState(): {
   undos: number;
 } {
   const saved = loadSaved(storageOrNull());
+
+  /**
+   * A ?seed= in the URL picks the starting game, but only when there is nothing saved.
+   *
+   * Letting the seed always win looks more faithful to the link but is quietly broken: moves
+   * are still written to storage, so progress would be saved and then never read, and every
+   * reload would silently discard the game. Seeding only a fresh install keeps "reload keeps my
+   * game" true, which matters more. The Phase 10 daily challenge needs its own storage key for
+   * the same reason: a shared seed must not collide with ordinary play.
+   */
+  const urlSeed = saved || typeof window === 'undefined' ? null : seedFromLocation(window.location);
+
   if (!saved) {
-    const game = newGame(randomSeed());
+    const game = newGame(urlSeed ?? randomSeed());
     return {
       game,
       tracker: createTracker(game.board),
