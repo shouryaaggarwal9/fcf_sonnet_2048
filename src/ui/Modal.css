@@ -118,8 +118,9 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  /* A comfortable tap target for the radio or checkbox itself. */
-  min-height: 2.2rem;
+  /* A comfortable tap target for the radio or checkbox itself: the same 44px floor as .btn,
+     because these are settings a player changes on a phone. */
+  min-height: 44px;
   cursor: pointer;
 }
 

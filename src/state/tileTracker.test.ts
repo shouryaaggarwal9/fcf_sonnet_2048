@@ -197,6 +197,11 @@ describe('syncTracker', () => {
 describe('tracker against the real engine', () => {
   const script: Direction[] = ['left', 'up', 'right', 'down'];
 
+  // The one slow test in the suite: up to 6000 moves, each with eight assertions, so roughly a
+  // quarter of a million expect() calls. It takes 3s on an idle machine and 7s when the suite
+  // runs in parallel, which is over Vitest's 5s default and made this test fail intermittently
+  // on a loaded runner. The budget is stated rather than raised globally, so every other test
+  // still fails fast.
   it('stays in step with the board, stays sorted, never reuses an id, never changes a birth', () => {
     for (let seed = 1; seed <= 20; seed++) {
       let game = newGame(seed);
@@ -241,5 +246,5 @@ describe('tracker against the real engine', () => {
         tracker = next;
       }
     }
-  });
+  }, 30_000);
 });

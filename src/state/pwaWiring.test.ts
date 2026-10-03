@@ -79,8 +79,17 @@ describe('every icon the manifest references exists', () => {
 describe('the page links the manifest and the icons', () => {
   const html = read('index.html');
 
-  it('links the web app manifest', () => {
-    expect(html).toContain('rel="manifest"');
+  it('does not hand-link the manifest, because the plugin injects one', () => {
+    // vite-plugin-pwa injects the manifest link at build time. index.html used to carry a
+    // second one, so the built page shipped two identical links. Asserted on the source so the
+    // duplicate cannot come back; the end-to-end suite checks the built page has exactly one.
+    expect(html).not.toContain('rel="manifest"');
+  });
+
+  it('configures a manifest, so removing the hand-written link cannot leave none at all', () => {
+    // The pair of assertions either side of this one is the point: index.html has no manifest
+    // link, so the plugin's `manifest` option is the only thing keeping the app installable.
+    expect(viteConfig).toContain('manifest: {');
   });
 
   it('links an apple touch icon for iOS', () => {

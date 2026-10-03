@@ -106,6 +106,12 @@ body {
   background: var(--btn-bg);
   color: var(--btn-fg);
   cursor: pointer;
+  /*
+   * 44px is the smallest comfortable thumb target (WCAG 2.5.5, and what iOS and Android both
+   * point at). Padding alone left the text buttons at 37px, which is reachable on a desktop
+   * and fiddly on a phone. Height only, so a long label still gets the room it needs.
+   */
+  min-height: 44px;
 }
 
 .btn:hover {

@@ -24,6 +24,11 @@
   font-size: 0.9rem;
 }
 
+/*
+ * Smaller type and tighter padding than .btn, but the 44px floor from .btn still applies: the
+ * update toast is the one control a player meets on a phone mid-session, so it is the last place
+ * to save space.
+ */
 .btn-sm {
   padding: 0.35em 0.8em;
   font-size: 0.85rem;

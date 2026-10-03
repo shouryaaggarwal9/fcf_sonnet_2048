@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameStatus } from '../engine';
 import './GameOverlay.css';
 import { moveSettleMs } from './motion';
+import { useOverlayFocus } from './useOverlayFocus';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 
 interface GameOverlayProps {
@@ -45,35 +46,8 @@ function useSettled(active: boolean, delayMs: number): boolean {
 
 /**
  * Moves focus to the overlay's primary button when it appears, and puts it back afterwards.
- *
- * Without this, focus stays wherever it was, which for a keyboard or screen reader player
- * means the game-over dialog appears without being announced or reachable: tabbing carries on
- * through the page behind it. Returning focus matters just as much, otherwise dismissing the
- * overlay drops the player at the top of the document.
- *
- * Focus is only taken once the overlay is settled, so the button is not focused while it is
- * still invisible behind the delay.
+ * Shared with the settings and help dialogs, which need the same behaviour.
  */
-function useOverlayFocus(active: boolean, primaryRef: React.RefObject<HTMLButtonElement | null>) {
-  const restoreTo = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!active) {
-      // Restoring on the way out is what keeps the player where they were.
-      const previous = restoreTo.current;
-      restoreTo.current = null;
-      if (previous && previous.isConnected) previous.focus();
-      return;
-    }
-    restoreTo.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  }, [active]);
-
-  useEffect(() => {
-    if (active) primaryRef.current?.focus();
-  }, [active, primaryRef]);
-}
-
 export function GameOverlay({ status, score, onKeepPlaying, onRestart }: GameOverlayProps) {
   const reducedMotion = usePrefersReducedMotion();
   const delayMs = moveSettleMs(reducedMotion);

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { useModalDialog } from './useModalDialog';
 
 interface ModalProps {
   open: boolean;
@@ -15,24 +16,11 @@ interface ModalProps {
  * plain dialog with none of that, so showModal() is called imperatively.
  */
 export function Modal({ open, title, onClose, children }: ModalProps) {
-  const ref = useRef<HTMLDialogElement>(null);
+  // Focus lands on the close button rather than on showModal()'s first-focusable guess, which
+  // differs between engines. It is the one control guaranteed to be meaningful in both dialogs.
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const ref = useModalDialog(open, onClose, closeRef);
   const titleId = `modal-${title.replace(/\s+/g, '-').toLowerCase()}`;
-
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog) return;
-    // Fires for Escape as well as close(), so both routes update our state.
-    const handleClose = () => onClose();
-    dialog.addEventListener('close', handleClose);
-    return () => dialog.removeEventListener('close', handleClose);
-  }, [onClose]);
 
   return (
     <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={onClose}>
@@ -40,7 +28,13 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
         <h2 className="modal-title" id={titleId}>
           {title}
         </h2>
-        <button type="button" className="btn btn-icon" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="btn btn-icon"
+          ref={closeRef}
+          onClick={onClose}
+          aria-label="Close"
+        >
           {/* Decorative: the aria-label above carries the meaning. */}
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path
