@@ -2,6 +2,7 @@ import { useGameStore } from '../state/gameStore';
 import type { ThemePreference } from '../state/savedData';
 import { Modal } from './Modal';
 import { MOTIONS, type MotionPreference, motionLabel } from './motionPreference';
+import { InstallRow } from './UpdateToast';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -86,6 +87,11 @@ export function SettingsDialog({ open, onClose, systemWantsLess }: SettingsDialo
             ? ' Your system is currently asking for reduced motion.'
             : ' Your system is not currently asking for reduced motion.'}
         </p>
+      </fieldset>
+
+      <fieldset className="settings-group">
+        <legend className="settings-legend">Install</legend>
+        <InstallRow />
       </fieldset>
     </Modal>
   );

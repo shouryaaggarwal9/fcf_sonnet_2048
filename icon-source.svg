@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="2048">
+  <!--
+    The one source the icons are generated from, by scripts/generate-icons.mjs.
+
+    Artwork fills the middle 60% so the maskable safe zone is respected: Android crops a
+    maskable icon to whatever shape the device prefers, and anything outside that zone can be
+    cut off. The safe zone for a 512 icon is the central 80% circle, so keeping the artwork
+    inside 60% leaves real margin.
+
+    Colours are the game's own tile colours, and the ink is the one the contrast audit chose,
+    so the icon cannot drift from the product.
+  -->
+  <rect width="512" height="512" fill="#bbada0" />
+
+  <g>
+    <!-- Two merged tiles, echoing a merge. -->
+    <rect x="102" y="102" width="140" height="140" rx="18" fill="#edc850" />
+    <rect x="270" y="102" width="140" height="140" rx="18" fill="#f2b179" />
+    <rect x="102" y="270" width="140" height="140" rx="18" fill="#eee4da" />
+    <rect x="270" y="270" width="140" height="140" rx="18" fill="#f65e3b" />
+
+    <g fill="#231f1a" font-family="system-ui, -apple-system, sans-serif" font-weight="700" text-anchor="middle">
+      <text x="172" y="192" font-size="96">2</text>
+      <text x="340" y="192" font-size="96">4</text>
+      <text x="172" y="360" font-size="96">8</text>
+      <text x="340" y="360" font-size="72">2</text>
+    </g>
+  </g>
+</svg>

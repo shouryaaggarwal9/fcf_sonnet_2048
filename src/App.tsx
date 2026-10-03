@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import type { Direction } from './engine';
+import { startPwa } from './pwa';
 import { startPersistence, startStorageSync, useGameStore } from './state/gameStore';
 import { restartWarning, shouldConfirmRestart } from './state/restart';
 import { bestFor } from './state/savedData';
@@ -17,6 +18,7 @@ import { ScoreBox } from './ui/ScoreBox';
 import { ScorePopups } from './ui/ScorePopups';
 import { SettingsDialog } from './ui/SettingsDialog';
 import { ThemeToggle } from './ui/ThemeToggle';
+import { UpdateToast } from './ui/UpdateToast';
 import { useKeyboard } from './ui/useKeyboard';
 import { useReducedMotion, useSystemReducedMotion } from './ui/useReducedMotion';
 import { useSwipe } from './ui/useSwipe';
@@ -38,6 +40,9 @@ export default function App() {
   // than rendering, so they start once here and tear down with the component.
   useEffect(() => startPersistence(), []);
   useEffect(() => startStorageSync(), []);
+  // Registers the service worker and listens for the install prompt. An update it may find is
+  // only ever offered, never applied without a click.
+  useEffect(() => startPwa(), []);
 
   const undo = useUndo();
   const theme = useTheme();
@@ -195,6 +200,7 @@ export default function App() {
       )}
 
       <Announcer />
+      <UpdateToast />
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
