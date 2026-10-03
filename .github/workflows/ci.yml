@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   check:
+    name: Lint, types, unit tests, build, bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,3 +28,78 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+      # After the build, because it measures dist/. Deterministic, unlike the Lighthouse scores,
+      # so this is the gate that will actually stop a dependency from adding weight.
+      - run: pnpm bundle
+
+  e2e:
+    name: End-to-end (Chromium, WebKit, mobile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Keyed on the Playwright version rather than the lockfile, because the browsers are
+      # downloaded per Playwright release and change far less often than the dependencies do.
+      # Without this every run re-downloads roughly 500 MB of Chromium and WebKit.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - run: pnpm e2e:install
+
+      - run: pnpm build
+
+      - run: pnpm e2e
+        env:
+          CI: 'true'
+
+      # The bundle is what a player downloads; the traces are what to look at when a test fails
+      # on CI but not locally.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      # Chrome ships preinstalled on the GitHub runners, which is why this job does not install
+      # a browser of its own the way the e2e job does.
+      - run: pnpm lighthouse
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: .lighthouseci-report/
+          retention-days: 7

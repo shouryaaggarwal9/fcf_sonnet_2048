@@ -15,7 +15,12 @@
     "test": "vitest run",
     "test:fuzz": "vitest run src/engine/fuzz.test.ts",
     "test:watch": "vitest",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "bundle": "node scripts/check-bundle.mjs",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:install": "playwright install --with-deps chromium webkit",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -23,7 +28,10 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "2.5.15",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/node": "^24.13.3",

@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Test and audit output
+/test-results
+/playwright-report
+/blob-report
+/.lighthouseci
+/.lighthouseci-report
