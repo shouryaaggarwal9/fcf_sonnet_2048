@@ -355,19 +355,73 @@ report options (version pinning, workbox-build directly). Don't hack around it.
 
 ## Phase 8: quality gates
 
-- [ ] **Playwright e2e** (Chromium plus WebKit plus mobile emulation): load and play; keyboard move; swipe via
-      touch events; mash-queue behavior; win and keep going (use a seeded or injected state); game over;
-      undo; theme; persistence across reload; offline after install; reduced-motion emulation. Add a
-      test hook or URL param for seeds (for example `?seed=123`), enabled in all builds but harmless,
-      which also serves the daily challenge later.
-- [ ] Screenshot assertions are optional. If used, pin viewport and disable animations to avoid flakiness.
-- [ ] **Lighthouse CI** in GitHub Actions on the production build: target 95+ for Performance,
-      Accessibility, Best Practices, SEO, plus PWA checks. Fail the build below budget.
-- [ ] **axe-core** accessibility checks in Playwright, in both themes.
-- [ ] **Bundle budget:** record the baseline (about 220 kB JS / 69 kB gzip at scaffold). Set a budget
-      (for example gzip JS under 100 kB for the shipped game), fail CI when exceeded.
-- [ ] Add CI caching for Playwright browsers. Run e2e on PRs.
-- [ ] Optional: pre-commit hook (lefthook or husky) running Biome on staged files.
+- [x] **Playwright e2e** (Chromium plus WebKit plus mobile emulation): load and play; keyboard move; swipe via
+      touch events; mash-queue behavior; game over; undo; theme; persistence across reload; offline after
+      install; reduced-motion emulation. `?seed=123` added, enabled in all builds but harmless, which also
+      serves the daily challenge later.
+- [x] Screenshot assertions skipped, deliberately: every assertion here is about state or focus rather than
+      pixels, and pixel assertions on an animated board are the flakiest thing that could be added.
+- [x] **Lighthouse CI** in GitHub Actions on the production build: target 95+ for Performance,
+      Accessibility, Best Practices, SEO. Fail the build below budget.
+- [x] **axe-core** accessibility checks in Playwright, in both themes.
+- [x] **Bundle budget:** baseline recorded, gzip JS under 100 kB, CI fails when exceeded.
+- [x] Add CI caching for Playwright browsers. Run e2e on PRs.
+- [ ] Optional: pre-commit hook (lefthook or husky) running Biome on staged files. **Not done, on purpose.**
+
+### Phase 8 decisions
+
+- **The seed URL parameter seeds only a fresh install.** It is `?seed=123`, validated strictly (whole
+  numbers only, coerced to the signed 32-bit range the engine uses), and it applies *only when there is
+  no saved game*. Letting the seed always win was the first implementation and it was quietly broken:
+  moves were still written to storage, so progress was saved and then never read, and every reload
+  discarded the game. "Reload keeps my game" matters more than link fidelity. The Phase 10 daily
+  challenge will need its own storage key for the same reason.
+- **Game over is reached by really playing, not by an injected state.** The engine-level tests measured
+  how many moves a rotation strategy needs per seed (seed 21 takes 79), so `playToEnd` paces one keypress
+  per slide and those tests are fast and honest. No test hook that can force a board was added.
+  **Win and keep-going are covered in jsdom instead**, by driving the store directly: reaching 2048 in a
+  browser would need a real solver and thousands of keypresses, which would be a slow test that tests
+  nothing extra, since the overlay is the same component with the same focus handling as game over.
+- **No Lighthouse PWA assertions, because they no longer exist.** Lighthouse removed the PWA category and
+  with it the `installable-manifest`, `service-worker`, `maskable-icon` and `tap-targets` audits; asserting
+  them fails with "is not a known audit" rather than passing quietly. PWA behaviour is asserted in the
+  end-to-end suite instead, which can actually test it: manifest link, every icon it names, the worker
+  registering and taking control, and the app loading with the network off.
+- **Scores are a smoke test; the bundle script is the budget.** Measured 96–98 Performance, 100
+  Accessibility, 100 Best Practices, 100 SEO. Performance has ~1 point of headroom over the 0.95 threshold,
+  so it could go red on a slow runner. That is an acceptable trade: the deterministic gate that actually
+  stops a dependency adding weight is `scripts/check-bundle.mjs` (77.0 kB JS, 3.1 kB CSS against 100/12 kB).
+- **`robots.txt` was missing and Lighthouse found it.** The SPA fallback served `index.html` for it, which
+  cost 9 SEO points. Added a real one.
+- **Offline is skipped on WebKit, as a tooling limit, not a choice.** Measured: on a page with *no service
+  worker at all*, `setOffline(true)` plus `reload()` still fails with "WebKit encountered an internal
+  error". Route interception would not help, because intercepted routes are not what a worker fetches.
+  **So offline play in real Safari is unverified** and needs a device check. The worker does register and
+  take control in WebKit, so the wiring is right.
+- **The e2e suite is typechecked**, via `tsconfig.e2e.json` with the same `noUncheckedIndexedAccess` and
+  `strict` as the app. This immediately caught five real errors in the tests on the day it was added.
+- **No pre-commit hook.** It needs a `prepare` install step that can silently not run, it only sees staged
+  files so it is weaker than the full `pnpm lint` CI already runs on every push and PR, and it would add a
+  dependency. Available on request.
+
+### Phase 8 bugs found and fixed
+
+The suite was worth writing for these alone:
+
+- **Focus was not restored when a dialog closed in Safari.** `Modal` had no restore logic at all and was
+  relying on Chromium's native `<dialog>` doing it, which WebKit does not. Dismissing a dialog in Safari
+  dropped a keyboard player at the top of the document. Fixed with `useModalDialog`, which captures the
+  opener *before* `showModal()` and restores focus on the `close` event rather than on a state change.
+  `GameOverlay` is a `div[role=dialog]`, so it keeps its own `useOverlayFocus`; the two cannot share one
+  hook because only one of them has a `showModal()` to call.
+- **Buttons were under the 44px touch target floor.** The text buttons were 37px tall. `.btn`, `.btn-sm`
+  and the settings options now all have a 44px minimum.
+- **`index.html` shipped two identical manifest links**, one from `vite-plugin-pwa` and one hand-written.
+- **A pre-existing Biome warning** in `GameOverlay.tsx` (`previous &&` should be `previous?.`) is gone, so
+  `pnpm lint` is clean rather than "clean with one warning".
+- **`tileTracker.test.ts` was flaky.** The heaviest test in the suite took 7s against Vitest's 5s default
+  and failed intermittently on a loaded machine. Given an explicit 30s budget on that one test, so every
+  other test still fails fast.
 
 ---
 
