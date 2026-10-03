@@ -4,22 +4,50 @@ Work top to bottom. Each task has acceptance criteria. A task isn't done until e
 criterion holds and the Definition of Done in AGENTS.md passes. Tick the box in this file
 in the same commit.
 
-## Current state (completed)
+## Current state
+
+**Live at https://puzlgame.vercel.app**, deployed from `main` by Vercel. Phases 0 to 8 are built,
+committed, and green in CI. Phase 9 is untouched; Phase 10 is untouched and needs the owner to
+pick.
 
 - [x] Phase 0: Vite + React + TS strict, Biome, Vitest, CI, Vercel deploy
 - [x] Phase 1: engine (slide, move, spawn, seeded RNG, game state, win/over, fuzz and purity tests)
 - [x] Phase 2: store, board and tile rendering, score boxes, win and game-over overlays
 - [x] Phase 3: keyboard, swipe (verified on a real phone), move lock and queue
-- [x] Phase 4 (partial): tile tracker, slide, spawn, merge pop, ghost hand-off, queue-safe CSS
+- [x] Phase 4: tile tracker, slide, spawn, merge pop, ghost hand-off, queue-safe CSS, delayed
+      overlay, floating score popup. **Two items deliberately still open, both needing the owner
+      or a device: real-phone duration review, and 6x CPU throttle profiling.** Six of the seven
+      automatable edge cases are also still open, listed in 4.6.
+- [x] Phase 5: persistence, best score, undo, theme toggle, restart confirmation, removal of the
+      dev controls
+- [x] Phase 6: live-region announcements, overlay focus management, dialogs, settings and
+      how-to-play, reduced-motion override, safe areas, landscape, metadata, component tests
+- [x] Phase 7: PWA (manifest, generated icons, service worker, offline, install UX). **Two items
+      still open, both needing a real phone: standalone behaviour, and the update flow plus
+      airplane mode.**
+- [x] Phase 8: Playwright e2e on three browsers, axe in both themes, Lighthouse CI, bundle budget,
+      CI caching. Found and fixed four real bugs.
 
-Known temporary things to remove or replace:
+Gates at the end of Phase 8, all verified on CI rather than locally only: lint clean with zero
+warnings, typecheck clean across app/node/e2e, 478 unit tests in 28 files, 111 e2e tests across
+Chromium, WebKit, and a Pixel 7 viewport (110 passing, 1 skipped), bundle 77.0 kB JS and 3.1 kB
+CSS gzipped against budgets of 100 and 12, Lighthouse 96–98 Performance and 100 for
+Accessibility, Best Practices, and SEO.
 
-- On-screen `up/left/down/right` "dev controls" in `App.tsx` and `.dev-controls` in `App.css`
-- Header text, `<title>`, and favicon are placeholders
-- Keyboard focus stays on the header button when the overlay appears
+**Clearest next steps**, in the order I would take them:
 
-Fixed since this list was written: `Best` score box (5.1), and the overlay no longer appears
-instantly (4.5). The overlay is still not a dialog and does not take focus, which is Phase 6.
+1. The six outstanding automatable edge cases in 4.6. All timing bugs, all automatable, and the
+   class of defect that only reproduces on a device.
+2. `vercel.json` in Phase 9. The app is public with no security headers and no cache rules.
+3. The error boundary in Phase 9, so a corrupt save cannot present as a blank page.
+
+Owner-only, cannot be closed by an agent: real-device feel checks, the custom domain name, the
+license choice, and whether to add analytics or Sentry.
+
+Previously listed as temporary and now genuinely resolved: the `up/left/down/right` dev controls
+and `.dev-controls` (removed in 5.5), the placeholder title and favicon (Phase 6 and 7), and
+focus staying on the header button when the overlay appears (Phase 6, then hardened in Phase 8,
+which found dialogs were not restoring focus in Safari at all).
 
 ---
 
@@ -44,12 +72,23 @@ instantly (4.5). The overlay is still not a dialog and does not take focus, whic
 
 - [ ] Review durations on a real phone with the owner. Adjust only in `motion.ts`. The owner already
       felt 110ms and a quint ease was too fast. 150ms with an ease-out cubic is the current choice.
+      **Still open. This is the one item that most needs the owner's eyes.**
 - [ ] Profile on a throttled CPU (DevTools 6x slowdown): sliding stays smooth. If `container-type: size` on every
       tile or `backdrop-filter` on the overlay causes cost, measure and fix it. Don't guess.
-- [ ] Verify these explicitly and add Playwright tests later in Phase 8 for the ones that can be automated:
-      mash keys (queue of 2, lock honoured); new game mid-animation; tab hidden and restored mid-animation;
-      window resize mid-slide; `[2,2,2,2]` gives two simultaneous pops; merge plus spawn at the same instant;
-      page load shows no animation.
+      **Still open.** Not attempted rather than attempted and glossed over: a frame-time number
+      from a headless runner on a desktop CPU says nothing useful about a mid-range phone.
+- [ ] **Automatable edge cases, from the list this phase originally specified.** One of seven was
+      done in Phase 8; the other six are outstanding and are the clearest remaining work in the
+      roadmap. They are all timing bugs, which is exactly the class that only shows up on a real
+      device and then gets misdiagnosed as "the animation feels off".
+      - [x] Mash keys: queue of 2 and the move lock honoured.
+      - [ ] New game mid-animation.
+      - [ ] Tab hidden and restored mid-animation.
+      - [ ] Window resize mid-slide.
+      - [ ] `[2,2,2,2]` gives two simultaneous pops. Needs a board fixture, not a seed: no seed
+            reliably produces four 2s in a row.
+      - [ ] Merge plus spawn at the same instant.
+      - [ ] Page load shows no animation.
 - [x] Touch polish: `overscroll-behavior: none` on the page, no long-press context menu or text selection
       on the board, no double-tap zoom (`touch-action: manipulation` outside the swipe area).
 
@@ -129,7 +168,9 @@ Design is decided. Implement it as specified.
       after win; undo then move equals the original line if the same direction is played; history
       cap; history cleared on restart; fuzz: random sequences of move and undo never break
       tracker or board invariants, and `sum` of tiles is conserved; best score survives undo.
-- [ ] A Playwright test (Phase 8) for undo via button and via keyboard.
+- [x] A Playwright test (Phase 8) for undo via button and via keyboard. *(Undo via the button is
+      covered on all three browsers, plus undo surviving a reload, undo leaving no ghost tiles
+      behind, and undo clearing on restart.)*
 
 Decisions and things later phases must not undo:
 
@@ -223,9 +264,10 @@ Notes, and what the audit actually found:
 
 ### 5.4 New game and restart behavior
 
-- [ ] "New game" on a game in progress (`moves > 0` and status `playing`) asks for confirmation
+- [x] "New game" on a game in progress (`moves > 0` and status `playing`) asks for confirmation
       through an accessible modal (`<dialog>` with focus trapping and Escape handling). No confirm on
       fresh or over states. Make the confirm copy mention that undo is not available after restart.
+      *(Shipped in Phase 5.4; the box was left unticked.)*
 - [x] Both restart paths call `gameInput.reset()` first (already true in `handleRestart`. Keep it).
 
 ### 5.5 Remove the dev controls (and replace them properly)
@@ -274,7 +316,9 @@ Notes for 5.4 and 5.5:
       accessible name and a short instructions text. Ghost tiles remain `aria-hidden`. Overlays are
       dialogs.
 - [x] **Focus management:** when the win or game-over overlay appears, move focus to its primary button and
-      restore it afterwards. Known issue: focus currently stays on the header button.
+      restore it afterwards. *(The "known issue: focus stays on the header button" note here was
+      fixed in Phase 6 and hardened in Phase 8, which found that dialogs were not restoring focus
+      at all in Safari. See Phase 8.)*
 - [x] **Keyboard:** visible `:focus-visible` everywhere. Logical tab order. Document shortcuts in a
       How-to-play dialog (rules, controls, undo shortcut).
 - [x] **Settings dialog:** theme, on-screen D-pad, reduced-motion override (respect system by default),
@@ -282,8 +326,13 @@ Notes for 5.4 and 5.5:
 - [ ] **Sound and haptics (optional):** `navigator.vibrate` for merges where supported, short
       Web Audio blips. Off by default or at least obviously mutable. Respect user gesture rules for audio.
       Check that it adds negligible weight.
-- [ ] **Branding:** product name, favicon, header, and metadata (see "Owner decisions"). Open Graph and Twitter
+      **Declined by the owner.** Not an oversight; do not add without asking.
+- [x] **Branding:** product name, favicon, header, and metadata (see "Owner decisions"). Open Graph and Twitter
       card image, `<meta name="description">`, `lang`, canonical URL.
+      *(Shipped in Phase 6: name "2048" by owner decision, generated favicon and icon set,
+      `og-image.svg`, description, `lang="en"`. **Canonical URL is deliberately deferred to
+      Phase 9**, with the custom domain, since it should point at the final hostname. Note the
+      live site has no `rel="canonical"` today.)*
 - [x] **Component tests:** add jsdom and `@testing-library/react` for UI logic (overlay, undo button
       disabled state, theme toggle, restart confirm). Keep engine tests in `node` environment. Configure
       per-file `// @vitest-environment jsdom` or a Vitest project, not a global switch.
@@ -337,19 +386,35 @@ Two items are **not** done, both because they are owner decisions rather than en
 **First verify `vite-plugin-pwa` supports the Vite version in `package.json`.** If it doesn't, stop and
 report options (version pinning, workbox-build directly). Don't hack around it.
 
-- [ ] Web app manifest: name, short_name, description, `start_url`, `scope`, `display: standalone`, `theme_color` and
+- [x] Web app manifest: name, short_name, description, `start_url`, `scope`, `display: standalone`, `theme_color` and
       `background_color` matching the theme, `orientation` considered (do not force portrait without
       justification), `categories: ["games"]`.
-- [ ] Icons: 192 and 512 PNG, **maskable** variants with a proper safe zone, `apple-touch-icon` (180),
+      *(Shipped in Phase 7; the box was left unticked. `orientation` deliberately omitted so
+      landscape phones and tablets work, and a unit test now fails if it is ever added.)*
+- [x] Icons: 192 and 512 PNG, **maskable** variants with a proper safe zone, `apple-touch-icon` (180),
       favicon SVG plus ICO. Generate from one source SVG with a script checked into the repo.
-- [ ] Service worker via Workbox: precache the app shell, offline play must work fully (the game has no
+      *(Shipped in Phase 7. `pnpm icons` regenerates `public/` from `icon-source.svg` via `sharp`
+      and `sharp-ico`, because `@vite-pwa/assets-generator` wanted plugin major ^1 while the
+      current release is 2.)*
+- [x] Service worker via Workbox: precache the app shell, offline play must work fully (the game has no
       network dependency). `registerType: 'prompt'`. Show an unobtrusive "Update available, reload"
       toast, never reload mid-game silently. Clean old caches.
-- [ ] Install UX: capture `beforeinstallprompt` and offer an Install button in settings (Chromium). iOS
+      *(Shipped in Phase 7, and offline load is now asserted in `e2e/` on Chromium and
+      mobile-chrome. `skipWaiting: false` and `clientsClaim: false` mean the first visit is
+      deliberately uncontrolled, so offline applies from the second visit onwards.)*
+- [x] Install UX: capture `beforeinstallprompt` and offer an Install button in settings (Chromium). iOS
       Safari has no prompt, so show brief "Share, Add to Home Screen" instructions where relevant.
       Hide the button when already installed (`display-mode: standalone`).
+      *(Shipped in Phase 7 as `InstallRow` in the settings dialog, with the iOS instructions and an
+      honest "Install unavailable in this browser" fallback.)*
 - [ ] Verify standalone behavior: no pull-to-refresh, safe areas, status bar color, splash.
+      **Owner, on a real phone.** Safe-area insets and `viewport-fit=cover` are implemented and
+      `overscroll-behavior` is set, but nothing has confirmed the status bar or splash.
 - [ ] Test the update flow on a real deployed build (old SW to new SW), and test airplane mode.
+      **Owner, on a real phone.** The prompt-and-reload flow is wired, and the offline path is
+      tested in Chromium, but the old-SW-to-new-SW transition needs a real deployment cycle.
+      **Airplane mode in Safari is a known gap**: Playwright's WebKit cannot survive an offline
+      reload (see Phase 8), so that combination is unverified by machine.
 
 ---
 
@@ -404,6 +469,13 @@ report options (version pinning, workbox-build directly). Don't hack around it.
   files so it is weaker than the full `pnpm lint` CI already runs on every push and PR, and it would add a
   dependency. Available on request.
 
+### Phase 8 verification
+
+All three CI jobs passed on GitHub's Linux runners on commit `bcd8ef3`, not just locally: lint,
+types, unit tests, build and bundle; the full end-to-end suite; and Lighthouse. The live
+deployment was then checked directly — `robots.txt` returns 200 and the page has exactly one
+manifest link, confirming the Phase 8 fixes shipped.
+
 ### Phase 8 bugs found and fixed
 
 The suite was worth writing for these alone:
@@ -427,16 +499,29 @@ The suite was worth writing for these alone:
 
 ## Phase 9: production
 
+**Deployment already works.** Vercel is linked to this repo and auto-deploys `main` to
+https://puzlgame.vercel.app, verified live at the end of Phase 8. So this phase is no longer
+about getting the app online; it is about hardening and documenting what is already up. That also
+means **every push to `main` publishes**, so the full local gate matters more here, not less.
+
 - [ ] `vercel.json` (or `vercel.ts` if current docs recommend it): security headers (a strict CSP compatible
       with the inline theme script via hash, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
       `Permissions-Policy`, `frame-ancestors`/`X-Frame-Options`), and cache rules: hashed `/assets/*`
       `immutable` for a year; `index.html` and the service worker (`sw.js`) `no-cache`; manifest
       short cache. Verify the service worker has the right scope and is never cached stale.
-- [ ] Custom domain (owner provides), HTTPS, `www` redirect, correct canonical.
+      **The highest-value item in the whole remaining roadmap.** There are currently no security
+      headers and no cache rules at all. The `sw.js` `no-cache` rule is the one that matters
+      most: get it wrong and returning clients pin an old service worker indefinitely.
+- [ ] Custom domain (**owner provides the name**), HTTPS, `www` redirect, correct canonical.
+      Not blocked on anything else: the `vercel.app` hostname works and is already serving.
+      Only the *custom* domain and the `rel="canonical"` that should point at it are outstanding.
 - [ ] Privacy-respecting analytics (Vercel Web Analytics or equivalent, no cookies, no PII). Mention it
       in a short privacy note. Skip it entirely if the owner prefers.
 - [ ] Error reporting: a top-level React error boundary with a friendly reset option that clears corrupt
       saved state, plus optional Sentry. Do not add Sentry without asking.
+      **The error boundary is worth doing on its own merits**, independent of Sentry: a truncated
+      write or a bad migration is exactly the failure that makes a game unopenable, and today it
+      would present as a blank page with no way back.
 - [ ] `README.md`: what it is, features, architecture diagram of the dependency rule, commands, how
       determinism and undo work, how to add a theme, deployment notes. Add a `LICENSE` (ask the owner
       which).

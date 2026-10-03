@@ -9,34 +9,75 @@ Repo: github.com/shouryaaggarwal9/fcf_sonnet_2048
 
 ## Verification status of this document
 
-This file was written by a previous assistant that could not run the code. It reflects what
-the owner reported (test output, CI, screenshots), not independent verification. Treat
-claims here as strong hints. Confirm against the code before relying on them. If the code
-and this file disagree, the code wins. Then fix this file.
+The original version of this file was written by an assistant that could not run the code, and
+it said so. That is no longer true: the game has been built out through roadmap Phase 8, every
+claim below has been checked against a real run, and CI enforces all of it on every push. Treat
+this file as accurate as of Phase 8. If the code and this file disagree, the code still wins, and
+fix this file in the same change.
+
+**Still not machine-verifiable, and honest about it:** animation feel, swipe rhythm, and anything
+else the owner judges by eye on a real device. Also unverified: offline play in real Safari (see
+Phase 8 in the roadmap), because Playwright's WebKit cannot survive an offline reload.
 
 ## Stack (actual, as built)
 
 TypeScript (strict, plus `noUncheckedIndexedAccess`), Vite 8, React, Zustand, Vitest 5,
-Biome (exact-pinned) for lint and format, pnpm (pinned via `packageManager`), GitHub Actions CI,
-Vercel hosting. **Plain CSS with CSS variables.** Tailwind and the Motion library were
-considered and deliberately not used. Do not add either without asking.
+Biome (exact-pinned) for lint and format, pnpm (pinned via `packageManager`), Playwright 1.63
+for end-to-end, `@axe-core/playwright`, `@lhci/cli` for Lighthouse CI, `vite-plugin-pwa`,
+GitHub Actions CI, Vercel hosting. **Plain CSS with CSS variables.** Tailwind and the Motion
+library were considered and deliberately not used. Do not add either without asking.
 
-Vite, Vitest, and Biome are recent major versions. Read their current docs before using
-config or plugin APIs. Do not rely on memory.
+Vite, Vitest, Biome, Playwright, and Lighthouse are recent major versions. Read their current
+docs before using config or plugin APIs. Do not rely on memory. This has already bitten once:
+Lighthouse removed the PWA category and its individual audits, so the roadmap's "plus PWA
+checks" could not be done the way it was written.
 
 ## Commands
 
 ```
 pnpm dev          # dev server
-pnpm test         # vitest run (~11s, fuzz tests dominate)
+pnpm test         # vitest run (478 tests / 28 files, ~35s; fuzz dominates)
 pnpm lint         # biome check .   (lint:fix to autofix)
-pnpm typecheck    # tsc -b
+pnpm typecheck    # tsc -b   (app + node + e2e, see tsconfig.e2e.json)
 pnpm build        # tsc -b && vite build
+pnpm preview      # vite preview
+
+pnpm e2e          # playwright test, 111 tests over chromium/webkit/mobile-chrome (~5min)
+pnpm e2e:install  # download the browsers (once; ~500MB)
+pnpm e2e:ui       # playwright --ui
+pnpm bundle       # fail if dist/assets exceeds the gzip budget
+pnpm lighthouse   # lhci autorun; needs a local Chrome
+pnpm icons        # regenerate public/ icons from icon-source.svg
 ```
 
 **Definition of done for every change:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
-all pass, and CI is green after push. Baseline when this was written: 216 tests in 14 files.
-The count may only go up. If it goes down, explain why in the commit message.
+all pass, and CI is green after push. If the change touches rendering, dialogs, input, or
+anything a browser has to agree on, `pnpm e2e` must pass too — it is the only gate that runs
+WebKit, and three real bugs got past everything else by only existing there.
+
+Baseline at Phase 8: **478 unit tests in 28 files**, 111 e2e tests (110 passing, 1 skipped),
+77.0 kB JS and 3.1 kB CSS gzipped against budgets of 100 and 12. Unit counts may only go up. If
+one goes down, explain why in the commit message.
+
+### What each gate is for
+
+They overlap on purpose, because each catches something the others cannot.
+
+- `pnpm test` — logic, fast, no browser.
+- `pnpm typecheck` — includes `e2e/`, with the same `strict` and `noUncheckedIndexedAccess` as
+  the app. Adding it caught five real type errors in the e2e suite on the day it was written.
+- `pnpm bundle` — deterministic. The real budget, and the gate that will actually stop a
+  dependency adding weight.
+- `pnpm e2e` — the only gate that runs WebKit and a touch viewport. Also the only place axe
+  runs, in both themes.
+- `pnpm lighthouse` — scores only, currently 96–98 Performance and 100 for Accessibility, Best
+  Practices, and SEO. It is a smoke test with about a point of headroom on Performance, so it
+  can go red on a busy runner. Do not treat a red score as the truth; check `pnpm bundle` and
+  `pnpm e2e` first.
+
+Note what Lighthouse no longer checks: there is no PWA category and no `installable-manifest`,
+`service-worker`, `maskable-icon`, or `tap-targets` audit. PWA behaviour is asserted in `e2e/`
+instead, which can actually test it.
 
 ## Architecture: the one-way dependency rule
 
@@ -80,6 +121,22 @@ finish sliding then vanish), and `nextId`.
 - The tracker is not part of `GameState`. Anything that replaces `game` (undo, restore,
   restart) **must also replace `tracker` consistently**.
 
+### Persistence and seeds (`src/state/savedData.ts`, `src/state/seed.ts`)
+
+- `SCHEMA_VERSION` is 4. Any change to the persisted shape needs a bump **and** a branch in
+  `migrate()`. Validation is hand-written and must never throw: corrupt, missing, or
+  newer-version data falls back to a fresh game.
+- `?seed=123` in the URL starts that exact game, because the engine is deterministic. It is
+  validated strictly — whole numbers only, coerced with `| 0` to match the engine — and
+  anything else is ignored rather than guessed at.
+- **The seed applies only when there is nothing saved.** This is deliberate and was a real bug
+  once: letting the seed always win still wrote moves to storage, so progress was saved and
+  then never read, and every reload silently discarded the game. If you add a daily challenge
+  or any other seeded mode, **give it its own storage key** so it cannot collide with ordinary
+  play. That is the whole reason for the rule.
+- Storage is resolved once and lazily; a throwing or missing `localStorage` yields null and
+  every write is skipped. The game must run identically with storage unavailable.
+
 ### Animation system (`src/ui/Board.css`, `src/ui/motion.ts`)
 
 - `motion.ts` is the **single source of truth** for timing (`SLIDE_MS=150`, ease
@@ -106,6 +163,33 @@ gesture, dominant axis, `touch-action: none`, ignores buttons inside the swipe a
 **Anything that replaces the game must call `gameInput.reset()` first**, or queued moves from
 the old game leak into the new one.
 
+### Dialogs and focus (`src/ui/Modal.tsx`, `GameOverlay.tsx`, `useModalDialog.ts`, `useOverlayFocus.ts`)
+
+There are two focus hooks and they are deliberately not shared, because the two overlays are
+different mechanisms:
+
+- `Modal` is a **native `<dialog>`**, driven by `useModalDialog`.
+- `GameOverlay` is a `div[role="dialog"]`, driven by `useOverlayFocus`. There is no
+  `showModal()` to call, so the two cannot be one hook.
+
+**Do not "simplify" these into one hook without reading this first.** Both orderings in
+`useModalDialog` are load-bearing, and both were wrong in the version that shipped:
+
+- Capture the opener **before** `showModal()`. showModal moves focus, so capturing afterwards
+  stores the close button and closing returns focus to a button inside a dialog that is no
+  longer open.
+- Restore focus on the **`close` event**, not on a state change. Restoring earlier gets bounced
+  back into the dialog by the browser and then lost when it closes.
+
+This whole area was broken in **Safari only** and invisible in Chromium, which restores focus
+for you natively. Anything about dialogs, focus, or `aria-modal` must be checked on WebKit, and
+driven by **keyboard**, because WebKit blurs a button on `mousedown` (Safari does not focus
+buttons on click), so with a mouse the opener genuinely is `<body>` and there is nothing to
+restore to. That is correct behaviour, not a bug.
+
+The 44px minimum tap target is enforced in CSS on `.btn`, `.btn-sm`, and `.settings-option`.
+The text buttons were 37px before Phase 8 and the e2e suite caught it.
+
 ## Conventions
 
 - Test-first for logic. Hand-worked expected values, not copied from implementation output.
@@ -118,9 +202,16 @@ the old game leak into the new one.
 - No new dependency without checking: maintained, size impact (`pnpm build` output), license, need.
   Prefer platform features.
 - Never use `any`, non-null `!`, or `as` casts to silence the compiler unless justified in a comment.
-  The two existing `as CSSProperties` casts for CSS custom properties are accepted.
+  The two existing `as CSSProperties` casts for CSS custom properties are accepted. Under
+  `noUncheckedIndexedAccess`, prefer `?? fallback` with a comment over a cast.
 - Accessibility is a requirement, not polish. Everything interactive is keyboard and screen-reader usable.
 - State shape changes to anything persisted require a schema version bump and a migration.
+- There is deliberately **no pre-commit hook** (owner decision, Phase 8). It needs a `prepare`
+  step that can silently not run, it only sees staged files so it is weaker than the full
+  `pnpm lint` that CI already runs on every push, and it would add a dependency. Do not add one
+  without asking.
+- If a test needs a deliberately slow timeout, state it on that one test with the reason, rather
+  than raising the global timeout. `tileTracker.test.ts` is the current example.
 
 ## How to work with the owner
 
@@ -128,9 +219,23 @@ the old game leak into the new one.
   that. Make timing easy to tune (constants in `motion.ts`) and ask for a visual check at the end
   of every UI task, saying exactly what to look at.
 - You can and should verify behavior with Playwright screenshots, traces, and the DevTools
-  Animations panel. Do that instead of guessing.
+  Animations panel. Do that instead of guessing. One limit worth knowing: CSS animations cannot
+  advance in a backgrounded tab, so anything about smoothness has to be checked by the owner.
 - The owner is happy to decide things the agent shouldn't (branding, product choices). Ask a
   short, specific question with your recommendation. Don't block on small matters. Pick the
   option that polished tile games use, and say what you picked.
 - Work the roadmap in `docs/ROADMAP.md` in order, one task at a time. Update its checkboxes
-  as you finish tasks.
+  as you finish tasks, **including the ones already satisfied by earlier work** — several were
+  left unticked for phases that shipped, and a checklist that under-reports progress is worse
+  than no checklist.
+
+## Deployment
+
+Vercel, linked to this repo, auto-deploys `main`. **Pushing to `main` publishes to
+https://puzlgame.vercel.app**, so a green local gate is not optional there. CI runs three jobs on
+every push and pull request: lint/types/unit/build/bundle, end-to-end, and Lighthouse.
+
+Not yet done, and it is the first thing to check when something looks wrong in production:
+there is **no `vercel.json`**, so there are no security headers and no cache rules. In
+particular there is no CSP, and no rule keeping `sw.js` uncached. See Phase 9 in the roadmap.
+Also note there is no `rel="canonical"` yet, which Lighthouse does not check on a single page.
