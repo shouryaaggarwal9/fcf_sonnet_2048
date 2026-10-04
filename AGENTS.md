@@ -36,7 +36,7 @@ checks" could not be done the way it was written.
 
 ```
 pnpm dev          # dev server
-pnpm test         # vitest run (478 tests / 28 files, ~35s; fuzz dominates)
+pnpm test         # vitest run (497 tests / 30 files, ~40s; fuzz dominates)
 pnpm lint         # biome check .   (lint:fix to autofix)
 pnpm typecheck    # tsc -b   (app + node + e2e, see tsconfig.e2e.json)
 pnpm build        # tsc -b && vite build
@@ -48,6 +48,7 @@ pnpm e2e:ui       # playwright --ui
 pnpm bundle       # fail if dist/assets exceeds the gzip budget
 pnpm lighthouse   # lhci autorun; needs a local Chrome
 pnpm icons        # regenerate public/ icons from icon-source.svg
+pnpm csp          # recompute the inline-script hash and write it into vercel.json
 ```
 
 **Definition of done for every change:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
@@ -55,9 +56,9 @@ all pass, and CI is green after push. If the change touches rendering, dialogs, 
 anything a browser has to agree on, `pnpm e2e` must pass too — it is the only gate that runs
 WebKit, and three real bugs got past everything else by only existing there.
 
-Baseline at Phase 8: **478 unit tests in 28 files**, 111 e2e tests (110 passing, 1 skipped),
-77.0 kB JS and 3.1 kB CSS gzipped against budgets of 100 and 12. Unit counts may only go up. If
-one goes down, explain why in the commit message.
+Baseline at Phase 9: **497 unit and component tests in 30 files**, 135 e2e tests (134 passing,
+1 skipped), 77.3 kB JS and 3.2 kB CSS gzipped against budgets of 100 and 12. Unit counts may
+only go up. If one goes down, explain why in the commit message.
 
 ### What each gate is for
 
@@ -235,7 +236,31 @@ Vercel, linked to this repo, auto-deploys `main`. **Pushing to `main` publishes 
 https://puzlgame.vercel.app**, so a green local gate is not optional there. CI runs three jobs on
 every push and pull request: lint/types/unit/build/bundle, end-to-end, and Lighthouse.
 
-Not yet done, and it is the first thing to check when something looks wrong in production:
-there is **no `vercel.json`**, so there are no security headers and no cache rules. In
-particular there is no CSP, and no rule keeping `sw.js` uncached. See Phase 9 in the roadmap.
-Also note there is no `rel="canonical"` yet, which Lighthouse does not check on a single page.
+`vercel.json` holds the security headers and cache rules, and three things about it are load-bearing:
+
+- **`sw.js` and the Workbox runtime must stay `must-revalidate`.** Get this wrong and returning
+  clients pin an old service worker, which is the classic way a PWA keeps serving an old build
+  after you fixed it. This is the rule to check first when production looks stale.
+- **The CSP allows exactly one inline script, by hash** — the theme boot script in `index.html`,
+  which must be inline or the page paints light and snaps to dark. If you change that script, run
+  `pnpm build && pnpm csp` and commit the updated `vercel.json`; `src/state/security.test.ts` fails
+  if they disagree. The hash is computed from `dist/index.html`, not the source, because Vite
+  rewrites what it emits.
+- **`vite preview` serves those headers during `pnpm e2e`**, so the suite runs under the real
+  policy. Keep it that way. A CSP that is only ever deployed is a CSP that is never tested, and the
+  failure is silent: the theme quietly stops applying and the console fills with violations.
+
+Not yet done: no `rel="canonical"` (it should point at the custom domain), and no `LICENSE` — both
+waiting on the owner.
+
+## Accepted accessibility tradeoff
+
+Pinch-zoom is disabled, by the owner's decision: the game has nothing to magnify, and a zoomed page
+turns the next swipe into browser back/forward navigation.
+
+This fails WCAG 1.4.4, and **two tools report it**: axe's `meta-viewport` and Lighthouse's
+`meta-viewport`, which cost 7 points of the accessibility score on its own. Both exemptions are
+named explicitly rather than applied as blanket rule-disables, so every other rule stays enforced,
+and `src/state/security.test.ts` asserts the Lighthouse exemption exists exactly while zoom is
+disabled. If you re-enable zoom, remove both exemptions in the same change or they will rot
+silently.

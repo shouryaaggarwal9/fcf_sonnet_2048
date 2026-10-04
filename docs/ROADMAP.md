@@ -27,22 +27,29 @@ pick.
       airplane mode.**
 - [x] Phase 8: Playwright e2e on three browsers, axe in both themes, Lighthouse CI, bundle budget,
       CI caching. Found and fixed four real bugs.
+- [x] Phase 9 (mostly): security headers and cache rules in `vercel.json`, a crash screen,
+      `README.md`. **Still open, all owner decisions:** custom domain, `LICENSE`, analytics,
+      and Sentry (declined, errors stay local).
 
-Gates at the end of Phase 8, all verified on CI rather than locally only: lint clean with zero
-warnings, typecheck clean across app/node/e2e, 478 unit tests in 28 files, 111 e2e tests across
-Chromium, WebKit, and a Pixel 7 viewport (110 passing, 1 skipped), bundle 77.0 kB JS and 3.1 kB
-CSS gzipped against budgets of 100 and 12, Lighthouse 96–98 Performance and 100 for
+Gates at the end of Phase 9, all verified on CI rather than locally only: lint clean with zero
+warnings, typecheck clean across app/node/e2e, 497 unit and component tests in 30 files, 135 e2e
+tests across Chromium, WebKit, and a Pixel 7 viewport (134 passing, 1 skipped), bundle 77.3 kB JS
+and 3.2 kB CSS gzipped against budgets of 100 and 12, Lighthouse 99 Performance and 100 for
 Accessibility, Best Practices, and SEO.
+
+Also shipped in Phase 9: pinch-zoom is blocked (the owner's call) and a swipe can now start below
+the board, inside its width.
 
 **Clearest next steps**, in the order I would take them:
 
 1. The six outstanding automatable edge cases in 4.6. All timing bugs, all automatable, and the
    class of defect that only reproduces on a device.
-2. `vercel.json` in Phase 9. The app is public with no security headers and no cache rules.
-3. The error boundary in Phase 9, so a corrupt save cannot present as a blank page.
+2. Phase 10, once the owner picks. Stats and a daily challenge are the cheapest; replay mode is
+   the one that makes the determinism visible to a player.
+3. The two owner decisions still open: the license, and whether to add analytics.
 
 Owner-only, cannot be closed by an agent: real-device feel checks, the custom domain name, the
-license choice, and whether to add analytics or Sentry.
+license choice, whether to add analytics, and the deferred questions in Phase 10.
 
 Previously listed as temporary and now genuinely resolved: the `up/left/down/right` dev controls
 and `.dev-controls` (removed in 5.5), the placeholder title and favicon (Phase 6 and 7), and
@@ -504,27 +511,36 @@ https://puzlgame.vercel.app, verified live at the end of Phase 8. So this phase 
 about getting the app online; it is about hardening and documenting what is already up. That also
 means **every push to `main` publishes**, so the full local gate matters more here, not less.
 
-- [ ] `vercel.json` (or `vercel.ts` if current docs recommend it): security headers (a strict CSP compatible
+- [x] `vercel.json` (or `vercel.ts` if current docs recommend it): security headers (a strict CSP compatible
       with the inline theme script via hash, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
       `Permissions-Policy`, `frame-ancestors`/`X-Frame-Options`), and cache rules: hashed `/assets/*`
       `immutable` for a year; `index.html` and the service worker (`sw.js`) `no-cache`; manifest
       short cache. Verify the service worker has the right scope and is never cached stale.
-      **The highest-value item in the whole remaining roadmap.** There are currently no security
-      headers and no cache rules at all. The `sw.js` `no-cache` rule is the one that matters
-      most: get it wrong and returning clients pin an old service worker indefinitely.
+      *(Shipped. The CSP allows exactly one inline script by hash, `worker-src 'self'` is present
+      so the service worker is not silently blocked, and `style-src` keeps `'unsafe-inline'` because
+      tiles are positioned with inline style attributes. Three ways it is held honest: `pnpm csp`
+      recomputes the hash from `dist/index.html`, a unit test fails if the two disagree, and
+      `vite preview` serves the real headers so the end-to-end suite runs under the actual policy.
+      The offline test passing under the CSP is the load-bearing evidence.)*
 - [ ] Custom domain (**owner provides the name**), HTTPS, `www` redirect, correct canonical.
       Not blocked on anything else: the `vercel.app` hostname works and is already serving.
       Only the *custom* domain and the `rel="canonical"` that should point at it are outstanding.
 - [ ] Privacy-respecting analytics (Vercel Web Analytics or equivalent, no cookies, no PII). Mention it
       in a short privacy note. Skip it entirely if the owner prefers.
-- [ ] Error reporting: a top-level React error boundary with a friendly reset option that clears corrupt
+      **Owner decision, not started.** Note that adding Vercel Analytics also means adding
+      `connect-src` for its endpoint in the CSP, so the two are not independent.
+- [x] Error reporting: a top-level React error boundary with a friendly reset option that clears corrupt
       saved state, plus optional Sentry. Do not add Sentry without asking.
-      **The error boundary is worth doing on its own merits**, independent of Sentry: a truncated
-      write or a bad migration is exactly the failure that makes a game unopenable, and today it
-      would present as a blank page with no way back.
-- [ ] `README.md`: what it is, features, architecture diagram of the dependency rule, commands, how
-      determinism and undo work, how to add a theme, deployment notes. Add a `LICENSE` (ask the owner
-      which).
+      *(The boundary shipped. Tested by throwing on purpose, so the fallback runs every test rather
+      than only existing. The recovery button says plainly that the game is lost. **Sentry was not
+      added**: errors go to the console and to the player, nothing leaves the device.)*
+- [x] `README.md`: what it is, features, architecture diagram of the dependency rule, commands, how
+      determinism and undo work, how to add a theme, deployment notes.
+      *(Shipped, including the parts that are not obvious: why determinism makes undo exact, why
+      tile DOM order must never change, why the boot script is inline, and which two cache rules
+      matter.)*
+- [ ] `LICENSE` (**owner chooses**). Cannot be written without an answer: MIT, Apache-2.0, and
+      GPL-3.0 are all defensible here and mean very different things.
 
 ---
 
