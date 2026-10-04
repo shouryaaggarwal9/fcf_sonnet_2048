@@ -16,6 +16,7 @@
     "test:fuzz": "vitest run src/engine/fuzz.test.ts",
     "test:watch": "vitest",
     "icons": "node scripts/generate-icons.mjs",
+    "csp": "node scripts/csp-hash.mjs --write",
     "bundle": "node scripts/check-bundle.mjs",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",

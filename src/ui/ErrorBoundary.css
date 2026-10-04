@@ -1,0 +1,33 @@
+/*
+ * The crash screen. Deliberately plain and centred: whatever went wrong, this has to render, so
+ * it uses nothing that could itself fail. No board, no store, no animation.
+ */
+.crash {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+  background: var(--page-bg);
+  color: var(--text);
+}
+
+.crash-card {
+  max-width: 28rem;
+  text-align: center;
+}
+
+.crash-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+}
+
+.crash-text {
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+.crash-detail {
+  margin: 1.25rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}

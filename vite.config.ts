@@ -1,9 +1,39 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
+/**
+ * The production Content-Security-Policy, read from vercel.json rather than written out again.
+ *
+ * The point is that the end-to-end suite then runs against the real policy. A CSP that is only
+ * ever deployed is a CSP that is never tested, and the failure mode is silent and confusing: the
+ * theme silently stops applying, or the service worker fails to register, or the app is blank
+ * with a console full of violations nobody reads. vercel.json stays the single source of truth.
+ *
+ * Only the security headers are applied. Cache-Control is not, because it cannot break the app
+ * and a preview server is not the deployment target.
+ */
+function previewSecurityHeaders(): Record<string, string> {
+  const config = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
+    headers?: { source: string; headers?: { key: string; value: string }[] }[];
+  };
+  const catchAll = (config.headers ?? []).find((entry) => entry.source === '/(.*)');
+  const out: Record<string, string> = {};
+  for (const header of catchAll?.headers ?? []) {
+    // Cache-Control here would be Vercel's business, not the preview server's.
+    if (header.key === 'Cache-Control') continue;
+    out[header.key] = header.value;
+  }
+  return out;
+}
+
 // https://vite.dev/config/
 export default defineConfig({
+  preview: {
+    headers: previewSecurityHeaders(),
+  },
   plugins: [
     react(),
     VitePWA({
