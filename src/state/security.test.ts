@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -19,6 +20,27 @@ import { describe, expect, it } from 'vitest';
 
 const read = (relativePath: string) =>
   readFileSync(fileURLToPath(new URL(`../../${relativePath}`, import.meta.url)), 'utf8');
+
+const distDir = fileURLToPath(new URL('../../dist', import.meta.url));
+
+/** Every file under a directory, as a path relative to it, with forward slashes. */
+function walkFiles(dir: string, root = dir): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...walkFiles(full, root));
+    } else {
+      out.push(
+        full
+          .slice(root.length + 1)
+          .split('\\')
+          .join('/'),
+      );
+    }
+  }
+  return out;
+}
 
 interface HeaderEntry {
   source: string;
@@ -96,14 +118,40 @@ describe('the security headers are present', () => {
 });
 
 describe('the cache rules are right', () => {
+  it('never lets the catch-all set Cache-Control, which would silently win', () => {
+    // This is the bug that shipped in the first version of this file. Vercel applies every
+    // matching header block, and for a duplicate key the last one wins, so a catch-all carrying
+    // Cache-Control quietly overrode every specific rule: /assets/* was getting max-age=0
+    // instead of immutable, and sw.js was getting that by accident rather than by decision.
+    // Found by reading the real response headers on the deployed site, not by reading this file,
+    // which looked perfectly reasonable.
+    expect(headerOn(catchAll, 'Cache-Control')).toBeUndefined();
+  });
+
+  it('never lets the catch-all set a key that a specific block also sets', () => {
+    // The general form of the bug above. Cache-Control appears in many blocks on purpose, since
+    // each path needs its own rule. What is never safe is the catch-all also setting it, because
+    // the catch-all matches everything and would win. Checked against every key rather than just
+    // Cache-Control so it cannot come back one header at a time.
+    const specific = new Set(
+      entries
+        .filter((entry) => entry.source !== catchAll)
+        .flatMap((entry) => (entry.headers ?? []).map((header) => header.key.toLowerCase())),
+    );
+    const fromCatchAll = (entries.find((entry) => entry.source === catchAll)?.headers ?? []).map(
+      (header) => header.key.toLowerCase(),
+    );
+    expect(fromCatchAll.filter((key) => specific.has(key))).toEqual([]);
+  });
+
   it('caches hashed assets for a year, because their name changes when they do', () => {
-    expect(headerOn('/assets/(.*)', 'Cache-Control')).toBe('public, max-age=31536000, immutable');
+    expect(headerOn('/assets/:path*', 'Cache-Control')).toBe('public, max-age=31536000, immutable');
   });
 
   it('never caches the service worker, or returning clients pin an old one forever', () => {
     // The single most consequential rule in the file. Vercel's default for a static file would
     // let a stale worker sit in the HTTP cache and keep serving an old app shell.
-    for (const source of ['/sw.js', '/workbox-(.*).js']) {
+    for (const source of ['/sw.js', '/workbox-:path*']) {
       const value = headerOn(source, 'Cache-Control') ?? '';
       expect(value, source).toContain('max-age=0');
       expect(value, source).toContain('must-revalidate');
@@ -111,22 +159,66 @@ describe('the cache rules are right', () => {
     }
   });
 
-  it('revalidates the document, so a deploy is picked up', () => {
-    const value = headerOn(catchAll, 'Cache-Control') ?? '';
-    expect(value).toContain('max-age=0');
-    expect(value).toContain('must-revalidate');
+  it('revalidates the document at both paths it can be served from', () => {
+    // `/` and `/index.html`, because `?seed=1` still has the pathname `/`. The catch-all is not
+    // an option here: see the first test in this block.
+    for (const source of ['/', '/index.html']) {
+      const value = headerOn(source, 'Cache-Control') ?? '';
+      expect(value, source).toContain('max-age=0');
+      expect(value, source).toContain('must-revalidate');
+    }
   });
 
   it('gives unhashed public files a short cache rather than a long one', () => {
     // public/ files keep their names across deploys, so `immutable` on them would make an icon
-    // or the manifest impossible to change without renaming it.
-    for (const source of ['/(.*).png', '/icon.svg', '/favicon.ico', '/manifest.webmanifest']) {
+    // or the manifest impossible to change without renaming it. `icon-:file*` covers the four
+    // icon PNGs and icon.svg; `favicon-:file*` covers favicon.ico and the two favicon PNGs.
+    for (const source of [
+      '/icon-:file*',
+      '/icon.svg',
+      '/favicon-:file*',
+      '/favicon.ico',
+      '/apple-touch-icon.png',
+      '/og-image.svg',
+      '/manifest.webmanifest',
+      '/robots.txt',
+    ]) {
       const value = headerOn(source, 'Cache-Control') ?? '';
       expect(value, source).toMatch(/max-age=(3600|604800)/);
       expect(value, source).not.toContain('immutable');
     }
   });
+
+  it('has a rule for every file the build actually emits', () => {
+    // The failure mode of a wrong pattern is a file that quietly gets the platform default
+    // instead of the intended rule, which looks fine in review. Checked against dist/ so a new
+    // output file cannot be added without deciding how it is cached.
+    const emitted = existsSync(distDir) ? walkFiles(distDir).map((file) => `/${file}`) : [];
+    // The document is also served at `/`, hence the extra entry.
+    const uncovered = [...emitted, '/'].filter((file) => cacheRuleFor(file) === undefined);
+    expect(uncovered).toEqual([]);
+  });
 });
+
+/** The Cache-Control that applies to a concrete emitted path, by simple pattern match. */
+function cacheRuleFor(path: string): string | undefined {
+  const exact = headerOn(path, 'Cache-Control');
+  if (exact !== undefined) return exact;
+
+  // Mirrors the shapes used in vercel.json, enough to catch a file that no rule covers.
+  const patterns: [RegExp, string][] = [
+    [/\/assets\/.+/, '/assets/:path*'],
+    [/^\/workbox-.+\.js$/, '/workbox-:path*'],
+    [/^\/icon-.+/, '/icon-:file*'],
+    [/^\/icon\.svg$/, '/icon.svg'],
+    [/^\/favicon-.+/, '/favicon-:file*'],
+    [/^\/favicon\.ico$/, '/favicon.ico'],
+  ];
+  for (const [pattern, source] of patterns) {
+    if (pattern.test(path)) return headerOn(source, 'Cache-Control');
+  }
+  return undefined;
+}
 
 describe('the accepted zoom tradeoff is consistent across every tool that checks it', () => {
   /**
