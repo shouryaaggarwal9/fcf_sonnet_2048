@@ -9,6 +9,29 @@ import { openGame } from './helpers';
  * why the merged-tile-above-the-overlay bug survived every other gate, and why that one is
  * checked in play.spec.ts by hit-testing instead.
  */
+
+/**
+ * Violations this app knowingly accepts, and why.
+ *
+ * Kept as a list of ids rather than passed to axe's `disableRules`, because that keeps every
+ * other rule enforced: a new violation still fails the build, and the accepted one is asserted
+ * separately below so it cannot quietly change or vanish.
+ */
+const ACCEPTED_VIOLATIONS = new Set([
+  // WCAG 1.4.4 Resize Text. The owner decided pinch-zoom is blocked: the game has nothing to
+  // magnify, and a zoomed page turns the next swipe into browser back/forward navigation.
+  // Text-only zoom and browser font scaling still work. A game is not prose, so the cost of
+  // this is judged lower than the cost of a gesture that navigates away mid-game.
+  'meta-viewport',
+]);
+
+/** axe violations, minus the accepted ones. */
+function unexpectedViolations(violations: { id: string; help: string; nodes: unknown[] }[]) {
+  return violations
+    .filter((violation) => !ACCEPTED_VIOLATIONS.has(violation.id))
+    .map((violation) => `${violation.id}: ${violation.help} (${violation.nodes.length} nodes)`);
+}
+
 test.describe('accessibility', () => {
   for (const theme of ['light', 'dark'] as const) {
     test(`has no axe violations in the ${theme} theme`, async ({ page }) => {
@@ -24,11 +47,21 @@ test.describe('accessibility', () => {
         .exclude('.board-tiles')
         .analyze();
 
-      expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length} nodes)`)).toEqual(
-        [],
-      );
+      expect(unexpectedViolations(results.violations)).toEqual([]);
     });
   }
+
+  test('the accepted zoom violation is still exactly the one that was accepted', async ({
+    page,
+  }) => {
+    // If this stops firing, the viewport meta changed and ACCEPTED_VIOLATIONS is stale. If it
+    // starts reporting a different id, the list needs revisiting rather than growing.
+    await openGame(page, 1);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.map((violation) => violation.id).sort()).toEqual([
+      ...ACCEPTED_VIOLATIONS,
+    ]);
+  });
 
   test('the board is labelled and described for a screen reader', async ({ page }) => {
     await openGame(page, 1);

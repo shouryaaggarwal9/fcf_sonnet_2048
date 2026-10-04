@@ -108,10 +108,41 @@
 }
 
 .swipe-area {
+  /* Anchors the reach below. Also needed for the pseudo-element's absolute positioning. */
+  position: relative;
   /* Tell the browser we handle gestures here, so it won't scroll or pull-to-refresh. */
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   /* No long-press callout menu on the board (iOS Safari). */
   -webkit-touch-callout: none;
+}
+
+/*
+ * The reach: an invisible strip below the board that swipes too.
+ *
+ * Hitting the board exactly is a nuisance on a phone, since the board is small, the thumb is
+ * not, and a swipe that starts a few millimetres off the tiles is a swipe that does nothing.
+ * This widens the target downwards while keeping it inside the board's left and right edges, so
+ * a swipe in the margin beside the board is still not a swipe.
+ *
+ * Why a pseudo-element rather than padding: padding would push the controls below it down the
+ * page, which is a layout change nobody asked for. An absolutely positioned pseudo-element takes
+ * no space at all. Hit testing resolves a pseudo-element's area to the element that generated it,
+ * so pointer events here arrive at .swipe-area and the existing handlers run unchanged, which
+ * means no new code path to get wrong.
+ *
+ * The controls below the board stay clickable because they come later in the DOM and .dpad is
+ * positioned, so they paint and hit above this. See the z-index on .dpad.
+ *
+ * Clamped rather than a fixed height: on a tall desktop window the strip should not become an
+ * invisible second board, and on a short phone it should still cover the gap under the tiles.
+ */
+.swipe-area::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: clamp(7rem, 26vh, 16rem);
 }

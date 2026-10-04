@@ -7,6 +7,9 @@
  */
 .dpad {
   position: relative;
+  /* Above .swipe-area's ::after reach, which extends down behind this pad. Without it the pad
+     relies purely on coming later in the DOM, which is true but fragile and invisible. */
+  z-index: 1;
   width: 9.75rem;
   height: 9.75rem;
   margin: 0.75rem auto 0;
@@ -25,7 +28,9 @@
   padding: 0;
   font-size: 0.9rem;
   line-height: 1;
-  touch-action: manipulation; /* a tap here must not wait to see if it becomes a double-tap */
+  /* A tap here must not wait to see if it becomes a double-tap, and there is nothing here to
+     zoom, so pinch goes too. Same reasoning as the page root in index.css. */
+  touch-action: pan-x pan-y;
 }
 
 .dpad-up {

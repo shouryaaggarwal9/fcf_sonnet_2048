@@ -31,6 +31,52 @@ test.describe('pointer input', () => {
     expect(before).toBe(2);
   });
 
+  test('a swipe that starts below the board still moves the tiles', async ({ page }) => {
+    // The reach below the board exists because hitting the tiles exactly is a nuisance on a
+    // phone. Asserted as a real gesture starting below the board, not by inspecting the
+    // pseudo-element, so the hit-testing assumption in App.css is what gets tested.
+    await openGame(page, 5);
+    const box = await page.locator('.board').boundingBox();
+    if (box === null) throw new Error('board has no box, so there is nothing to swipe');
+
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height + 30;
+    // Guard the premise rather than trusting the layout: the point must be below the board and
+    // still on screen, otherwise this test would silently pass for the wrong reason.
+    expect(startY).toBeGreaterThan(box.y + box.height);
+    const viewport = page.viewportSize();
+    if (viewport === null) throw new Error('no viewport');
+    expect(startY).toBeLessThan(viewport.height);
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX - 120, startY, { steps: 8 });
+    await page.mouse.up();
+
+    await settle(page);
+    await expect(page.locator('.score-value').nth(2)).not.toHaveText('0');
+  });
+
+  test('a swipe beside the board does nothing, so the reach stays inside its width', async ({
+    page,
+  }) => {
+    // The reach extends downwards only. Widening it sideways would turn the whole page into a
+    // swipe target, which is what makes a gesture ambiguous.
+    await openGame(page, 5);
+    const box = await page.locator('.board').boundingBox();
+    if (box === null) throw new Error('board has no box');
+
+    const startX = box.x - 24;
+    const startY = box.y + box.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX - 120, startY, { steps: 8 });
+    await page.mouse.up();
+
+    await settle(page);
+    await expect(page.locator('.score-value').nth(2)).toHaveText('0');
+  });
+
   test('the direction pad plays a move with a single tap', async ({ page }) => {
     await openGame(page, 5);
     await page.getByRole('button', { name: 'Settings' }).click();
@@ -39,6 +85,8 @@ test.describe('pointer input', () => {
 
     const pad = page.locator('.dpad');
     await expect(pad).toBeVisible();
+    // The pad sits inside the reach below the board, so this also proves the reach does not
+    // swallow taps meant for the controls below it.
     await pad.locator('.dpad-left').click();
     await settle(page);
     await expect(page.locator('.score-value').nth(2)).not.toHaveText('0');
@@ -162,6 +210,31 @@ test.describe('reduced motion', () => {
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.getByLabel('Full').check();
     await expect(page.locator('html')).toHaveAttribute('data-motion', 'full');
+  });
+});
+
+test.describe('zoom', () => {
+  test('pinch zoom is blocked, since the game has nothing to magnify', async ({ page }) => {
+    // A zoomed page turns the next swipe into browser back/forward navigation, which is the
+    // bug this prevents. Two layers, because engines honour different ones: the meta tag and
+    // touch-action.
+    await openGame(page, 1);
+    const meta = await page.locator('meta[name="viewport"]').getAttribute('content');
+    expect(meta).toContain('maximum-scale=1');
+    expect(meta).toContain('user-scalable=no');
+
+    // `touch-action` is where the gesture is actually handled. `manipulation` would still allow
+    // pinch-zoom, since it is shorthand for pan-x pan-y pinch-zoom.
+    const rootTouchAction = await page.evaluate(() => getComputedStyle(document.body).touchAction);
+    expect(rootTouchAction).not.toContain('pinch-zoom');
+  });
+
+  test('the page can still be scrolled, so blocking zoom costs nothing here', async ({ page }) => {
+    // touch-action pan-x pan-y keeps panning. Only pinch-zoom was dropped; if this ever reads
+    // as "none" then a page taller than the viewport would trap the player.
+    await openGame(page, 1);
+    const rootTouchAction = await page.evaluate(() => getComputedStyle(document.body).touchAction);
+    expect(rootTouchAction).toBe('pan-x pan-y');
   });
 });
 

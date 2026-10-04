@@ -77,8 +77,17 @@ body {
     max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background: var(--page-bg);
   color: var(--text);
-  /* No double-tap zoom on buttons and text. The board opts out of gestures entirely. */
-  touch-action: manipulation;
+  /*
+   * No double-tap zoom, and no pinch zoom either.
+   *
+   * `manipulation` is `pan-x pan-y pinch-zoom`, so it stops a double tap from zooming but still
+   * lets a two-finger pinch through. Spelling out `pan-x pan-y` drops `pinch-zoom` too.
+   *
+   * The game has no zoom of its own: there is nothing to magnify, and once the page is zoomed
+   * the next swipe is a browser navigation gesture instead of a move. Pan is kept, so a page
+   * taller than a short phone viewport can still scroll.
+   */
+  touch-action: pan-x pan-y;
 }
 
 /*

@@ -7,7 +7,21 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- The manifest link is injected by vite-plugin-pwa, so adding one here would ship two. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      maximum-scale and user-scalable are set to stop pinch-zoom, because there is no zoom in
+      this game and a zoomed page turns the next swipe into browser back/forward navigation.
+      `touch-action: pan-x pan-y` in index.css does the same job at the gesture level; this is
+      the belt to that braces, for engines that honour the meta tag.
+      Known tradeoff: this is a WCAG 1.4.4 (Resize Text) concern, and axe-core's meta-viewport
+      rule flags it, so that rule is excluded in e2e/accessibility.spec.ts with the reason.
+      Text-only zoom and browser font scaling still work; only pinch-to-magnify is blocked.
+      Needs a device check on iOS, which is expected to ignore user-scalable for accessibility
+      reasons.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <!-- Matches the page background per theme, so the mobile browser chrome agrees. -->
     <meta name="theme-color" content="#faf8ef" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)" />
