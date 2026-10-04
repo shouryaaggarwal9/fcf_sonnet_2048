@@ -28,9 +28,9 @@ pick.
 - [x] Phase 8: Playwright e2e on three browsers, axe in both themes, Lighthouse CI, bundle budget,
       CI caching. Found and fixed four real bugs.
 - [x] Phase 9 (mostly): security headers and cache rules in `vercel.json`, a crash screen,
-      `README.md`. **Owner decisions closed:** no analytics, no Sentry (errors stay in the
-      console), `LICENSE` skipped for now. **Still open:** the custom domain name, and
-      `rel="canonical"` which depends on it.
+      `README.md`. Deployment confirmed sufficient at the `vercel.app` hostname. **Owner decisions
+      closed:** no analytics, no Sentry (errors stay in the console), `LICENSE` skipped for now.
+      **Still open:** only the two device-only checks in 4.6.
 
 Gates at the end of Phase 9, all verified on CI rather than locally only: lint clean with zero
 warnings, typecheck clean across app/node/e2e, 500 unit and component tests in 30 files, 159 e2e
@@ -41,15 +41,19 @@ Accessibility, Best Practices, and SEO.
 Also shipped in Phase 9: pinch-zoom is blocked (the owner's call), a swipe can now start below the
 board inside its width, and the seven timing edge cases from 4.6 are all covered.
 
-**Clearest next steps**, in the order I would take them:
+**Clearest next steps.** The roadmap is effectively complete: Phases 0 to 9 are built, gated, and
+deployed, and the only open items are the two device-only checks in 4.6.
 
-1. Phase 10, once the owner picks. Stats and a daily challenge are the cheapest; replay mode is
-   the one that makes the determinism visible to a player.
-2. Owner decisions still open: the custom domain name, and `rel="canonical"` with it.
-3. Real-device feel checks, which no gate can substitute for.
+1. Real-device feel checks (4.6): the animation durations on a phone, and a 6x CPU throttle
+   profile. No gate can substitute for either.
+2. Phase 10, if and when the owner wants any of it. Stats and a daily challenge are the cheapest;
+   replay mode is the one that makes the determinism visible to a player. Nothing here is needed
+   for the game to be finished.
+3. `LICENSE`, if the project is ever opened up. Unanswered for now, which means all rights
+   reserved.
 
-Owner-only, cannot be closed by an agent: real-device feel checks, the custom domain name, and the
-deferred questions in Phase 10.
+Owner-only, cannot be closed by an agent: real-device feel checks, and the deferred Phase 10
+product decisions.
 
 Previously listed as temporary and now genuinely resolved: the `up/left/down/right` dev controls
 and `.dev-controls` (removed in 5.5), the placeholder title and favicon (Phase 6 and 7), and
@@ -528,9 +532,10 @@ means **every push to `main` publishes**, so the full local gate matters more he
       recomputes the hash from `dist/index.html`, a unit test fails if the two disagree, and
       `vite preview` serves the real headers so the end-to-end suite runs under the actual policy.
       The offline test passing under the CSP is the load-bearing evidence.)*
-- [ ] Custom domain (**owner provides the name**), HTTPS, `www` redirect, correct canonical.
-      Not blocked on anything else: the `vercel.app` hostname works and is already serving.
-      Only the *custom* domain and the `rel="canonical"` that should point at it are outstanding.
+- [x] Deployment is **done and sufficient**: Vercel, linked to this repo, auto-deploys `main` to
+      https://puzlgame.vercel.app, verified live. The owner has confirmed the `vercel.app` hostname
+      is good enough, so no custom domain is wanted and `rel="canonical"` is not needed either.
+      **Closed deliberately, not overlooked.**
 - [ ] Privacy-respecting analytics (Vercel Web Analytics or equivalent, no cookies, no PII). Mention it
       in a short privacy note. Skip it entirely if the owner prefers.
       **Owner decision: no analytics.** Closed, not deferred. A game with no accounts and no
@@ -556,6 +561,11 @@ means **every push to `main` publishes**, so the full local gate matters more he
 ---
 
 ## Phase 10: stretch (ask the owner which to do, in this order of value)
+
+**Nothing in this phase is started, and none of it is needed for the game to be finished.** The
+app is live, installable, offline-capable, accessible, and gated by CI. Everything below is
+additive. Two items are explicitly not to be started without the owner: the hint system (product
+decisions) and the global leaderboard (a backend, and its own project).
 
 - [ ] **Stats:** games played, win rate, best tile, total moves, average score, per board size.
 - [ ] **Variable board sizes (3x3 to 8x8):** engine already supports it. Needs UI size selector, per-size

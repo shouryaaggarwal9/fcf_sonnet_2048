@@ -266,8 +266,9 @@ every push and pull request: lint/types/unit/build/bundle, end-to-end, and Light
   policy. Keep it that way. A CSP that is only ever deployed is a CSP that is never tested, and the
   failure is silent: the theme quietly stops applying and the console fills with violations.
 
-Not yet done: no `rel="canonical"` (it should point at the custom domain), and no `LICENSE` — both
-waiting on the owner.
+Not yet done: nothing deployment-related. The owner has confirmed `puzlgame.vercel.app` is
+sufficient, so there is no custom domain and no `rel="canonical"` to add. The one item still
+waiting on the owner is `LICENSE`, which means all rights reserved until they choose.
 
 ## Accepted accessibility tradeoff
 
