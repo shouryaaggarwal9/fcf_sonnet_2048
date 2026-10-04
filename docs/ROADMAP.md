@@ -28,8 +28,9 @@ pick.
 - [x] Phase 8: Playwright e2e on three browsers, axe in both themes, Lighthouse CI, bundle budget,
       CI caching. Found and fixed four real bugs.
 - [x] Phase 9 (mostly): security headers and cache rules in `vercel.json`, a crash screen,
-      `README.md`. **Still open, all owner decisions:** custom domain, `LICENSE`, analytics,
-      and Sentry (declined, errors stay local).
+      `README.md`. **Owner decisions closed:** no analytics, no Sentry (errors stay in the
+      console), `LICENSE` skipped for now. **Still open:** the custom domain name, and
+      `rel="canonical"` which depends on it.
 
 Gates at the end of Phase 9, all verified on CI rather than locally only: lint clean with zero
 warnings, typecheck clean across app/node/e2e, 497 unit and component tests in 30 files, 135 e2e
@@ -527,8 +528,10 @@ means **every push to `main` publishes**, so the full local gate matters more he
       Only the *custom* domain and the `rel="canonical"` that should point at it are outstanding.
 - [ ] Privacy-respecting analytics (Vercel Web Analytics or equivalent, no cookies, no PII). Mention it
       in a short privacy note. Skip it entirely if the owner prefers.
-      **Owner decision, not started.** Note that adding Vercel Analytics also means adding
-      `connect-src` for its endpoint in the CSP, so the two are not independent.
+      **Owner decision: no analytics.** Closed, not deferred. A game with no accounts and no
+      backend gains little from visitor counts, and declining keeps the CSP tight with no
+      third-party `connect-src` and no privacy note to maintain. Vercel's own logs show traffic
+      if a number is ever wanted.
 - [x] Error reporting: a top-level React error boundary with a friendly reset option that clears corrupt
       saved state, plus optional Sentry. Do not add Sentry without asking.
       *(The boundary shipped. Tested by throwing on purpose, so the fallback runs every test rather
@@ -539,8 +542,11 @@ means **every push to `main` publishes**, so the full local gate matters more he
       *(Shipped, including the parts that are not obvious: why determinism makes undo exact, why
       tile DOM order must never change, why the boot script is inline, and which two cache rules
       matter.)*
-- [ ] `LICENSE` (**owner chooses**). Cannot be written without an answer: MIT, Apache-2.0, and
-      GPL-3.0 are all defensible here and mean very different things.
+- [ ] `LICENSE` (**owner decision: skip for now**). Left unwritten deliberately rather than
+      overlooked. Worth remembering what that means: with no LICENSE the default is "all rights
+      reserved", so nobody may legally reuse, fork, or contribute to the code. If the project is
+      ever opened up, this needs an answer — MIT, Apache-2.0, and GPL-3.0 are all defensible here
+      and mean very different things.
 
 ---
 
