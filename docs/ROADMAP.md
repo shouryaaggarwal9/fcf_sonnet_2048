@@ -15,9 +15,9 @@ pick.
 - [x] Phase 2: store, board and tile rendering, score boxes, win and game-over overlays
 - [x] Phase 3: keyboard, swipe (verified on a real phone), move lock and queue
 - [x] Phase 4: tile tracker, slide, spawn, merge pop, ghost hand-off, queue-safe CSS, delayed
-      overlay, floating score popup. **Two items deliberately still open, both needing the owner
-      or a device: real-phone duration review, and 6x CPU throttle profiling.** Six of the seven
-      automatable edge cases are also still open, listed in 4.6.
+      overlay, floating score popup, and all seven of the automatable edge cases from 4.6.
+      **Two items deliberately still open, both needing the owner or a device: real-phone duration
+      review, and 6x CPU throttle profiling.**
 - [x] Phase 5: persistence, best score, undo, theme toggle, restart confirmation, removal of the
       dev controls
 - [x] Phase 6: live-region announcements, overlay focus management, dialogs, settings and
@@ -33,24 +33,23 @@ pick.
       `rel="canonical"` which depends on it.
 
 Gates at the end of Phase 9, all verified on CI rather than locally only: lint clean with zero
-warnings, typecheck clean across app/node/e2e, 497 unit and component tests in 30 files, 135 e2e
-tests across Chromium, WebKit, and a Pixel 7 viewport (134 passing, 1 skipped), bundle 77.3 kB JS
+warnings, typecheck clean across app/node/e2e, 500 unit and component tests in 30 files, 159 e2e
+tests across Chromium, WebKit, and a Pixel 7 viewport (157 passing, 2 skipped), bundle 77.3 kB JS
 and 3.2 kB CSS gzipped against budgets of 100 and 12, Lighthouse 99 Performance and 100 for
 Accessibility, Best Practices, and SEO.
 
-Also shipped in Phase 9: pinch-zoom is blocked (the owner's call) and a swipe can now start below
-the board, inside its width.
+Also shipped in Phase 9: pinch-zoom is blocked (the owner's call), a swipe can now start below the
+board inside its width, and the seven timing edge cases from 4.6 are all covered.
 
 **Clearest next steps**, in the order I would take them:
 
-1. The six outstanding automatable edge cases in 4.6. All timing bugs, all automatable, and the
-   class of defect that only reproduces on a device.
-2. Phase 10, once the owner picks. Stats and a daily challenge are the cheapest; replay mode is
+1. Phase 10, once the owner picks. Stats and a daily challenge are the cheapest; replay mode is
    the one that makes the determinism visible to a player.
-3. The two owner decisions still open: the license, and whether to add analytics.
+2. Owner decisions still open: the custom domain name, and `rel="canonical"` with it.
+3. Real-device feel checks, which no gate can substitute for.
 
-Owner-only, cannot be closed by an agent: real-device feel checks, the custom domain name, the
-license choice, whether to add analytics, and the deferred questions in Phase 10.
+Owner-only, cannot be closed by an agent: real-device feel checks, the custom domain name, and the
+deferred questions in Phase 10.
 
 Previously listed as temporary and now genuinely resolved: the `up/left/down/right` dev controls
 and `.dev-controls` (removed in 5.5), the placeholder title and favicon (Phase 6 and 7), and
@@ -85,18 +84,24 @@ which found dialogs were not restoring focus in Safari at all).
       tile or `backdrop-filter` on the overlay causes cost, measure and fix it. Don't guess.
       **Still open.** Not attempted rather than attempted and glossed over: a frame-time number
       from a headless runner on a desktop CPU says nothing useful about a mid-range phone.
-- [ ] **Automatable edge cases, from the list this phase originally specified.** One of seven was
-      done in Phase 8; the other six are outstanding and are the clearest remaining work in the
-      roadmap. They are all timing bugs, which is exactly the class that only shows up on a real
-      device and then gets misdiagnosed as "the animation feels off".
+- [x] **Automatable edge cases, from the list this phase originally specified.** All seven are now
+      covered in `e2e/timing.spec.ts`, on all three browsers where that is possible. They are all
+      timing bugs, which is exactly the class that never shows up in a unit test and only
+      reproduces on a device, where it gets misdiagnosed as "the animation feels off".
       - [x] Mash keys: queue of 2 and the move lock honoured.
-      - [ ] New game mid-animation.
-      - [ ] Tab hidden and restored mid-animation.
-      - [ ] Window resize mid-slide.
-      - [ ] `[2,2,2,2]` gives two simultaneous pops. Needs a board fixture, not a seed: no seed
-            reliably produces four 2s in a row.
-      - [ ] Merge plus spawn at the same instant.
-      - [ ] Page load shows no animation.
+      - [x] New game mid-animation: the board settles, the outgoing layer is cleaned up, and input
+            is accepted immediately, which is the `gameInput.reset()` invariant under a race.
+      - [x] Tab hidden and restored mid-animation. Chromium only, via CDP
+            `Page.setWebLifecycleState`, because faking `document.hidden` does not stop the browser
+            running animations and so would prove nothing. WebKit has no equivalent, so the test is
+            skipped there rather than weakened.
+      - [x] Window resize mid-slide: every tile still lands in its own cell afterwards.
+      - [x] Two simultaneous pops, and merge plus spawn at the same instant. Reached by really
+            playing: seed 1 with left, right, up leaves `2 . . 2 / . . . 4 / 2 . . 2`, and one more
+            left merges two pairs at once for a gain of 8 while also spawning a tile. Verified
+            against the engine rather than reasoned about, so no board-injection hook was needed.
+      - [x] Page load shows no animation, and a restart deliberately does. Those are different
+            code paths and the distinction is the reason `birth` is modelled at all.
 - [x] Touch polish: `overscroll-behavior: none` on the page, no long-press context menu or text selection
       on the board, no double-tap zoom (`touch-action: manipulation` outside the swipe area).
 

@@ -36,7 +36,7 @@ checks" could not be done the way it was written.
 
 ```
 pnpm dev          # dev server
-pnpm test         # vitest run (497 tests / 30 files, ~40s; fuzz dominates)
+pnpm test         # vitest run (500 tests / 30 files, ~40s; fuzz dominates)
 pnpm lint         # biome check .   (lint:fix to autofix)
 pnpm typecheck    # tsc -b   (app + node + e2e, see tsconfig.e2e.json)
 pnpm build        # tsc -b && vite build
@@ -56,8 +56,8 @@ all pass, and CI is green after push. If the change touches rendering, dialogs, 
 anything a browser has to agree on, `pnpm e2e` must pass too — it is the only gate that runs
 WebKit, and three real bugs got past everything else by only existing there.
 
-Baseline at Phase 9: **497 unit and component tests in 30 files**, 135 e2e tests (134 passing,
-1 skipped), 77.3 kB JS and 3.2 kB CSS gzipped against budgets of 100 and 12. Unit counts may
+Baseline at Phase 9: **500 unit and component tests in 30 files**, 159 e2e tests (157 passing,
+2 skipped), 77.3 kB JS and 3.2 kB CSS gzipped against budgets of 100 and 12. Unit counts may
 only go up. If one goes down, explain why in the commit message.
 
 ### What each gate is for
@@ -151,6 +151,22 @@ finish sliding then vanish), and `nextId`.
   fade live on `.tile-inner`; merged tiles sit above ghosts (z-index); ghosts fade on the
   **outer** element so they never fight the inner entrance animation.
 - `prefers-reduced-motion`: no sliding or scaling, only short opacity fades.
+
+### Testing animation timing (`e2e/timing.spec.ts`)
+
+Timing bugs never show up in a unit test and only reproduce on a device. Two hard-won rules if you
+extend that suite:
+
+- **Never poll for a live animation from outside the browser.** A merge pop lives ~330ms, and a
+  Playwright round trip does not reliably fit inside that when the suite runs in parallel. It
+  failed about one run in three, and far more on WebKit than Chromium. The suite records
+  `animationstart` *inside* the page and reads the log after, so nothing can be missed.
+- **Never wait for `getAnimations().length === 0`.** A ghost fades with `fill-mode: forwards`, so
+  its effect persists and it stays in that list forever. Wait on `playState === 'finished'`.
+
+Both cost real time to find, and both fail in the direction of proving nothing. When you add an
+assertion here, break the CSS deliberately afterwards and confirm the test goes red — a timing
+test that cannot fail is worse than no test.
 
 ### Input
 
